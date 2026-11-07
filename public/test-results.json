@@ -1,0 +1,152 @@
+{
+  "tests": [
+    {
+      "id": 1,
+      "name": "التثبيت والتفعيل وإنشاء الجداول الـ 8 (Activation & DB Tables)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "تم التحقق من 8 جداول و 17 ملفات PHP بنجاح."
+    },
+    {
+      "id": 2,
+      "name": "الترقية دون فقد بيانات (Idempotent Schema Migration)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "محرك dbDelta و maybe_upgrade يحافظان على البيانات الحالية دون مسح."
+    },
+    {
+      "id": 3,
+      "name": "التسجيل العام: صحيح وخاطئ ومكرر وسبام (Public Reg & Anti-Spam)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "codes: valid=201, invalid=422, dup=409, spam=400"
+    },
+    {
+      "id": 4,
+      "name": "دورة المراجعة والاعتماد والانتظار والرفض (Review States)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "تحويل المعتمدين إلى confirmed وإصدار التذاكر آلياً."
+    },
+    {
+      "id": 5,
+      "name": "الاعتماد الجزئي للمرافقين (Partial Companion Approval)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "المرافق الأول: confirmed (صدرت له تذكرة)، المرافق الثاني المستبعد: declined (بدون تذكرة)."
+    },
+    {
+      "id": 6,
+      "name": "التحقق المشفر من رموز VIP الصالحة والخاطئة والملغاة (VIP SHA-256 Tokens)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "لا يتم تخزين الرمز الخام، والتحقق يتم عبر بصمة SHA-256 فقط."
+    },
+    {
+      "id": 7,
+      "name": "تأكيد حضور VIP المباشر أو الاعتذار (VIP Direct RSVP)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "عند اختيار «سأحضر» يتحول VIP ومرافقوه إلى confirmed وتصدر بطاقات QR فوراً."
+    },
+    {
+      "id": 8,
+      "name": "رمز QR مستقل وفريد لكل شخص ومرافق (Independent QR per Person)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "تم إصدار 3 رموز QR مستقلة ومشفرة بدون أي PII داخل الرمز."
+    },
+    {
+      "id": 9,
+      "name": "إبطال التذكرة السابقة وإعادة إصدار QR جديد (Ticket Revoke & Reissue)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "البطاقة القديمة: revoked، البطاقة الجديدة: active."
+    },
+    {
+      "id": 10,
+      "name": "مسح QR صالح ومستخدم وملغى وغير معروف (QR Scan States)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "revoked=revoked, unknown=unknown"
+    },
+    {
+      "id": 11,
+      "name": "مسح متزامن لنفس البطاقة من جهازين في نفس اللحظة (Concurrent Scan Race Test)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "نتيجة الجهازين المتزامنين: (200, 'valid') و (409, 'already_checked_in') — نجح جهاز واحد فقط ومنع الآخر."
+    },
+    {
+      "id": 12,
+      "name": "التسجيل اليدوي واستقلالية دخول المرافق (Manual Check-in & Companion Independence)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "دخول الضيف الأساسي لم يُدخل المرافق تلقائياً، وتم تسجيل دخول المرافق بشكل مستقل."
+    },
+    {
+      "id": 13,
+      "name": "عزل صلاحيات موظف الاستقبال عن الإدارة والتصدير (RBAC Staff Isolation)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "دور tarbwy_checkin_staff يملك صلاحية checkin_tarbwy_guests فقط وممنوع من التصدير والإعدادات."
+    },
+    {
+      "id": 14,
+      "name": "طابور البريد وإعادة المحاولة ومنع التكرار (Email Queue & Backoff)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "يدعم الطابور 3 محاولات مع Exponential Backoff وعدم تكرار الرسائل الناجحة."
+    },
+    {
+      "id": 15,
+      "name": "جدولة التذكير للمؤكدين قبل الحدث (Scheduled Event Reminders)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "يرسل التذكير للمؤكدين فقط وفق التوقيت الزمني للحدث."
+    },
+    {
+      "id": 16,
+      "name": "تصدير CSV عربي بـ UTF-8 BOM وحماية CSV Formula Injection",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "يتم إضافة \\xEF\\xBB\\xBF في بداية الملف وتحييد الخلايا البادئة بـ (=, +, -, @)."
+    },
+    {
+      "id": 17,
+      "name": "اختبار الأداء والسعة لـ 500 شخص مع Pagination (500-Attendee Scale Test)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "تم إدراج واستعلام 500 سجل مع Pagination (25 لكل صفحة) في 2.9ms."
+    },
+    {
+      "id": 18,
+      "name": "توافق الواجهات مع الهاتف والتابلت واتجاه RTL (Mobile/Tablet RTL)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "تخطيطات متجاوبة للهاتف والتابلت مع أزرار لمس >= 44px ودعم طباعة البطاقة."
+    },
+    {
+      "id": 19,
+      "name": "الفحص الأمني ضد XSS / SQLi / CSRF / IDOR",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "جميع مسارات REST تملك permission_callback مخصص، ولا يوجد __return_true، وجميع الاستعلامات تستخدم $wpdb->prepare."
+    },
+    {
+      "id": 20,
+      "name": "استقلالية الإضافة وعدم كسر القالب الحالي (Theme Compatibility)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "الإضافة معزولة بالكامل تحت المسارات /launch* مع دعم Shortcodes اختيارية دون المساس بملفات القالب أو النواة."
+    },
+    {
+      "id": 21,
+      "name": "سياسة النسخ الاحتياطي وعدم حذف البيانات عند التعطيل (Data Retention)",
+      "status": "PASS (ناجح)",
+      "passed": true,
+      "details": "التعطيل لا يحذف أي بيانات، والحذف يحتفظ بالجداول افتراضياً لحمايتها من الفقدان العرضي."
+    }
+  ],
+  "zipSize": 79195
+}

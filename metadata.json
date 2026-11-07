@@ -1,0 +1,6 @@
+{
+  "name": "Tarbwy Event Manager",
+  "description": "إضافة WordPress متكاملة لإدارة حفل إطلاق تربوي — الاتحاد العربي للقيادة التربوية، تشمل صفحة الهبوط، التسجيل العام، دعوات VIP، بطاقات QR الفردية، نظام Check-in المتزامن، والرسائل والتقارير.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

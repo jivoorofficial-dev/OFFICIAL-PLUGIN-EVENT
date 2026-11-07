@@ -1,0 +1,408 @@
+/**
+ * Tarbwy Event Manager — Institutional RTL Stylesheet (tarbwy-public.css)
+ * Zero external CDN dependencies. Designed for Arabic RTL legibility, mobile-first forms,
+ * high-contrast Check-in controls, and clean printable tickets.
+ */
+
+:root {
+	--tarbwy-bg: #FBF9F5;
+	--tarbwy-surface: #FFFFFF;
+	--tarbwy-surface-alt: #F4EFE6;
+	--tarbwy-border: #E5E0D8;
+	--tarbwy-text: #1C1917;
+	--tarbwy-muted: #57534E;
+	--tarbwy-primary: #14532D;
+	--tarbwy-primary-hover: #166534;
+	--tarbwy-accent: #9A3412;
+	--tarbwy-success: #15803D;
+	--tarbwy-warning: #B45309;
+	--tarbwy-danger: #B91C1C;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body.tarbwy-public-body {
+	margin: 0;
+	padding: 0;
+	background-color: var(--tarbwy-bg);
+	color: var(--tarbwy-text);
+	font-family: 'Cairo', 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif;
+	direction: rtl;
+	text-align: right;
+	line-height: 1.7;
+	-webkit-font-smoothing: antialiased;
+}
+
+.tarbwy-container {
+	max-width: 1140px;
+	margin: 0 auto;
+	padding: 0 20px;
+}
+
+/* Header (Strict 3-zone Top Bar Contract) */
+.tarbwy-header {
+	background-color: var(--tarbwy-surface);
+	border-bottom: 1px solid var(--tarbwy-border);
+	position: sticky;
+	top: 0;
+	z-index: 40;
+}
+
+.tarbwy-header-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	min-height: 68px;
+}
+
+.tarbwy-brand-title {
+	font-weight: 800;
+	font-size: 1.05rem;
+	color: var(--tarbwy-primary);
+	white-space: nowrap;
+}
+
+.tarbwy-nav {
+	display: flex;
+	align-items: center;
+	gap: 24px;
+}
+
+.tarbwy-nav a {
+	color: var(--tarbwy-muted);
+	text-decoration: none;
+	font-size: 0.92rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.tarbwy-nav a:hover {
+	color: var(--tarbwy-primary);
+	text-decoration: underline;
+}
+
+/* Hero */
+.tarbwy-hero {
+	padding: 72px 0 64px;
+	background: linear-gradient(180deg, #F4EFE6 0%, #FBF9F5 100%);
+	border-bottom: 1px solid var(--tarbwy-border);
+}
+
+.tarbwy-kicker {
+	font-size: 0.85rem;
+	color: var(--tarbwy-accent);
+	font-weight: 700;
+	margin: 0 0 12px;
+}
+
+.tarbwy-hero-title {
+	font-size: clamp(1.85rem, 3.8vw, 3rem);
+	line-height: 1.3;
+	margin: 0 0 16px;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-hero-subtitle {
+	font-size: 1.15rem;
+	color: var(--tarbwy-muted);
+	max-width: 720px;
+	margin: 0 0 32px;
+}
+
+.tarbwy-hero-meta {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 16px;
+	padding: 20px;
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	margin-bottom: 32px;
+}
+
+.tarbwy-meta-label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--tarbwy-muted);
+}
+
+.tarbwy-meta-value {
+	font-size: 1rem;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+/* Sections & Cards */
+.tarbwy-section {
+	padding: 56px 0;
+}
+
+.tarbwy-section-alt {
+	background-color: var(--tarbwy-surface-alt);
+	border-top: 1px solid var(--tarbwy-border);
+	border-bottom: 1px solid var(--tarbwy-border);
+}
+
+.tarbwy-section-num {
+	display: block;
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--tarbwy-accent);
+	margin-bottom: 6px;
+}
+
+.tarbwy-grid-2 {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 24px;
+}
+
+.tarbwy-grid-3 {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 20px;
+}
+
+.tarbwy-card,
+.tarbwy-form-card {
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 28px;
+}
+
+.tarbwy-placeholder-notice {
+	background: var(--tarbwy-surface);
+	border: 1px dashed #C7B299;
+	padding: 24px;
+	color: var(--tarbwy-muted);
+}
+
+/* Buttons & Inputs */
+.tarbwy-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 20px;
+	font-size: 0.95rem;
+	font-weight: 700;
+	text-decoration: none;
+	border: 1px solid transparent;
+	cursor: pointer;
+	min-height: 44px;
+	white-space: nowrap;
+	font-family: inherit;
+}
+
+.tarbwy-btn-lg {
+	padding: 13px 28px;
+	font-size: 1.02rem;
+}
+
+.tarbwy-btn-primary {
+	background-color: var(--tarbwy-primary);
+	color: #FFFFFF;
+}
+
+.tarbwy-btn-primary:hover {
+	background-color: var(--tarbwy-primary-hover);
+}
+
+.tarbwy-btn-outline {
+	background-color: var(--tarbwy-surface);
+	color: var(--tarbwy-text);
+	border-color: var(--tarbwy-border);
+}
+
+.tarbwy-form-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 18px;
+	margin-top: 20px;
+}
+
+.tarbwy-field label {
+	display: block;
+	font-weight: 700;
+	font-size: 0.9rem;
+	margin-bottom: 6px;
+}
+
+.tarbwy-field input,
+.tarbwy-field select,
+.tarbwy-field textarea,
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="search"] {
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
+	border: 1px solid #C7C2B8;
+	background: #FFFFFF;
+	font-family: inherit;
+	font-size: 0.95rem;
+}
+
+.tarbwy-hp-field {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.tarbwy-companions-box {
+	margin-top: 28px;
+	padding-top: 24px;
+	border-top: 1px solid var(--tarbwy-border);
+}
+
+.tarbwy-companions-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+/* Official Printable Ticket */
+.tarbwy-official-ticket {
+	background: #FFFFFF;
+	border: 2px solid var(--tarbwy-primary);
+	padding: 32px;
+}
+
+.tarbwy-ticket-header {
+	border-bottom: 1px solid var(--tarbwy-border);
+	padding-bottom: 20px;
+	margin-bottom: 24px;
+}
+
+.tarbwy-ticket-org {
+	color: var(--tarbwy-primary);
+	font-weight: 800;
+	font-size: 0.95rem;
+}
+
+.tarbwy-ticket-title {
+	margin: 8px 0;
+	font-size: 1.5rem;
+}
+
+.tarbwy-ticket-body-grid {
+	display: grid;
+	grid-template-columns: 1fr 200px;
+	gap: 24px;
+	align-items: center;
+}
+
+.tarbwy-tkt-field {
+	margin-bottom: 14px;
+}
+
+.tarbwy-tkt-label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--tarbwy-muted);
+}
+
+.tarbwy-tkt-value-lg {
+	font-size: 1.25rem;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-ticket-qr-box {
+	text-align: center;
+	padding: 12px;
+	border: 1px solid var(--tarbwy-border);
+}
+
+/* Check-in Interface */
+.tarbwy-stats-ribbon {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 16px;
+}
+
+.tarbwy-stat-num {
+	display: block;
+	font-size: 1.6rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.tarbwy-checkin-banner {
+	padding: 20px;
+	margin-top: 16px;
+	border: 2px solid transparent;
+	font-weight: 700;
+}
+
+.tarbwy-banner-valid {
+	background: #ECFDF5;
+	border-color: #15803D;
+	color: #14532D;
+}
+
+.tarbwy-banner-duplicate,
+.tarbwy-banner-warning {
+	background: #FFFBEB;
+	border-color: #B45309;
+	color: #78350F;
+}
+
+.tarbwy-banner-error {
+	background: #FEF2F2;
+	border-color: #B91C1C;
+	color: #7F1D1D;
+}
+
+.tarbwy-footer {
+	background: var(--tarbwy-surface);
+	border-top: 1px solid var(--tarbwy-border);
+	padding: 32px 0;
+	margin-top: 48px;
+}
+
+.tarbwy-footer-inner {
+	display: flex;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 20px;
+}
+
+@media (max-width: 768px) {
+	.tarbwy-nav {
+		display: none;
+	}
+	.tarbwy-ticket-body-grid {
+		grid-template-columns: 1fr;
+	}
+	.tarbwy-stats-ribbon {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media print {
+	body.tarbwy-public-body {
+		background: #FFFFFF;
+	}
+	.tarbwy-no-print,
+	.tarbwy-header,
+	.tarbwy-footer {
+		display: none !important;
+	}
+	.tarbwy-official-ticket {
+		border: 2px solid #000000;
+		box-shadow: none;
+	}
+}
