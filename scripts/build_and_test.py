@@ -447,15 +447,51 @@ with open(os.path.join(ROOT_DIR, "TEST-REPORT.md"), "w", encoding="utf-8") as fh
     fh.write(report_md)
 shutil.copy2(os.path.join(ROOT_DIR, "TEST-REPORT.md"), os.path.join(PLUGIN_DIR, "TEST-REPORT.md"))
 
-with zipfile.ZipFile(zip_root_path, "w", zipfile.ZIP_DEFLATED) as zf:
-    for root, _, files in os.walk(PLUGIN_DIR):
+with zipfile.ZipFile(zip_root_path, "w", zipfile.ZIP_DEFLATED, allowZip64=False) as zf:
+    # Fixed valid timestamp (2025, 1, 15, 12, 0, 0) for universal Windows Explorer & WordPress PclZip/ZipArchive compatibility
+    fixed_dt = (2025, 1, 15, 12, 0, 0)
+    added_dirs = set()
+
+    for root, dirs, files in os.walk(PLUGIN_DIR):
+        dirs.sort()
+        rel_dir = os.path.relpath(root, ROOT_DIR).replace("\\", "/").rstrip("/") + "/"
+        if rel_dir not in added_dirs:
+            dir_info = zipfile.ZipInfo(rel_dir, date_time=fixed_dt)
+            dir_info.compress_type = zipfile.ZIP_STORED
+            dir_info.create_system = 0  # MS-DOS / Windows / Universal FAT compatibility
+            dir_info.create_version = 20
+            dir_info.extract_version = 20
+            dir_info.external_attr = (0o40755 << 16) | 0x10  # Directory attribute
+            zf.writestr(dir_info, b"")
+            added_dirs.add(rel_dir)
+
         for file in sorted(files):
             full_path = os.path.join(root, file)
-            rel_path = os.path.relpath(full_path, ROOT_DIR)
-            zf.write(full_path, rel_path)
+            rel_path = os.path.relpath(full_path, ROOT_DIR).replace("\\", "/")
+            with open(full_path, "rb") as f_in:
+                file_bytes = f_in.read()
+            file_info = zipfile.ZipInfo(rel_path, date_time=fixed_dt)
+            file_info.compress_type = zipfile.ZIP_DEFLATED
+            file_info.create_system = 0  # MS-DOS / Windows / Universal compatibility
+            file_info.create_version = 20
+            file_info.extract_version = 20
+            file_info.external_attr = (0o100644 << 16)
+            zf.writestr(file_info, file_bytes)
 
 shutil.copy2(zip_root_path, zip_public_path)
-with open(os.path.join(PUBLIC_DIR, "test-results.json"), "w", encoding="utf-8") as fh:
-    json.dump({"tests": results, "zipSize": os.path.getsize(zip_root_path)}, fh, ensure_ascii=False, indent=2)
 
-print(f"Successfully packaged {zip_root_path} ({os.path.getsize(zip_root_path)} bytes)")
+import base64
+with open(zip_root_path, "rb") as zf_bin:
+    raw_zip_bytes = zf_bin.read()
+    zip_b64 = base64.b64encode(raw_zip_bytes).decode("ascii")
+    zip_sha256 = hashlib.sha256(raw_zip_bytes).hexdigest()
+
+with open(os.path.join(PUBLIC_DIR, "test-results.json"), "w", encoding="utf-8") as fh:
+    json.dump({
+        "tests": results,
+        "zipSize": os.path.getsize(zip_root_path),
+        "zipSha256": zip_sha256,
+        "zipBase64": zip_b64,
+    }, fh, ensure_ascii=False, indent=2)
+
+print(f"Successfully packaged {zip_root_path} ({os.path.getsize(zip_root_path)} bytes, sha256={zip_sha256})")

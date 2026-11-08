@@ -37,11 +37,20 @@ export default function App() {
 
   // App state from backend
   const [stateData, setStateData] = useState<any>(null);
-  const [pluginMeta, setPluginMeta] = useState<{ files: any[]; tests: any[]; zipSize: number }>({
+  const [pluginMeta, setPluginMeta] = useState<{
+    files: any[];
+    tests: any[];
+    zipSize: number;
+    zipSha256?: string;
+    zipBase64?: string;
+  }>({
     files: [],
     tests: [],
     zipSize: 0,
+    zipSha256: '',
+    zipBase64: '',
   });
+  const [downloadingZip, setDownloadingZip] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{ path: string; content: string } | null>(null);
 
   // Public registration state (/launch)
@@ -148,6 +157,56 @@ export default function App() {
     if (res.ok) {
       const data = await res.json();
       setSelectedFile(data);
+    }
+  };
+
+  // Guaranteed Corruption-Free Binary ZIP Downloader (Bypasses iframe navigation & proxy stream issues)
+  const handleDownloadZip = async () => {
+    setDownloadingZip(true);
+    try {
+      let b64 = pluginMeta.zipBase64;
+      if (!b64) {
+        const res = await fetch('/api/plugin/files');
+        if (res.ok) {
+          const data = await res.json();
+          setPluginMeta(data);
+          b64 = data.zipBase64;
+        }
+      }
+
+      if (b64) {
+        const binaryStr = window.atob(b64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/zip' });
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = 'tarbwy-event-manager.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        return;
+      }
+
+      // Fallback direct binary fetch
+      const binRes = await fetch('/api/plugin/download-zip');
+      const arrayBuf = await binRes.arrayBuffer();
+      const blob = new Blob([arrayBuf], { type: 'application/zip' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'tarbwy-event-manager.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    } finally {
+      setDownloadingZip(false);
     }
   };
 
@@ -415,14 +474,15 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-3 shrink-0">
-            <a
-              href="/api/plugin/download-zip"
-              download="tarbwy-event-manager.zip"
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-800 transition-colors whitespace-nowrap shrink-0"
+            <button
+              type="button"
+              onClick={handleDownloadZip}
+              disabled={downloadingZip}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-60"
             >
               <Download className="w-4 h-4" />
-              تحميل الإضافة (tarbwy-event-manager.zip)
-            </a>
+              {downloadingZip ? 'جاري تجهيز ملف ZIP...' : 'تحميل الإضافة (tarbwy-event-manager.zip)'}
+            </button>
           </div>
         </div>
       </header>
@@ -1922,22 +1982,28 @@ export default function App() {
             {/* Deliverable Banner */}
             <div className="bg-white border border-stone-200 p-6 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <span className="text-xs font-bold text-[#9A3412]">الحزمة الإنتاجية الكاملة · WordPress → Plugins → Add Plugin → Upload Plugin</span>
+                <span className="text-xs font-bold text-[#9A3412]">الحزمة الإنتاجية الكاملة · متوافقة مع Windows Explorer و WordPress 6.4.3+ (PclZip & ZipArchive)</span>
                 <h1 className="text-2xl font-extrabold text-stone-900">
                   حزمة التسليم النهائية: Tarbwy Event Manager v1.0.0
                 </h1>
                 <p className="text-xs text-stone-600 mt-1">
-                  حجم ملف الـ ZIP الجاهز للتثبيت: <strong className="font-mono">{(pluginMeta.zipSize / 1024).toFixed(1)} KB</strong> · يشمل كافة ملفات PHP و SQL و JS/CSS المحلية والوثائق الـ 7 باللغة العربية.
+                  حجم ملف الـ ZIP الجاهز للتثبيت: <strong className="font-mono">{(pluginMeta.zipSize / 1024).toFixed(1)} KB</strong>
+                  {pluginMeta.zipSha256 && (
+                    <>
+                      {' '}· بصمة التحقق SHA-256: <code className="font-mono text-[11px]">{pluginMeta.zipSha256.substring(0, 16)}...</code>
+                    </>
+                  )}
                 </p>
               </div>
-              <a
-                href="/api/plugin/download-zip"
-                download="tarbwy-event-manager.zip"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-900 text-white text-sm font-bold hover:bg-emerald-800"
+              <button
+                type="button"
+                onClick={handleDownloadZip}
+                disabled={downloadingZip}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-900 text-white text-sm font-bold hover:bg-emerald-800 cursor-pointer disabled:opacity-60"
               >
                 <Download className="w-4 h-4" />
-                تحميل tarbwy-event-manager.zip الآن
-              </a>
+                {downloadingZip ? 'جاري التحميل...' : 'تحميل tarbwy-event-manager.zip الآن'}
+              </button>
             </div>
 
             {/* 21 Mandatory Tests Verification Matrix */}

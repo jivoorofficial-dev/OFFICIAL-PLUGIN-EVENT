@@ -543,9 +543,12 @@ seedInitialData();
 app.get('/api/plugin/download-zip', (_req, res) => {
   const zipPath = path.join(__dirname, 'tarbwy-event-manager.zip');
   if (fs.existsSync(zipPath)) {
+    const zipBuffer = fs.readFileSync(zipPath);
     res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Length', String(zipBuffer.length));
     res.setHeader('Content-Disposition', 'attachment; filename="tarbwy-event-manager.zip"');
-    fs.createReadStream(zipPath).pipe(res);
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(zipBuffer);
   } else {
     res.status(404).json({ message: 'ملف ZIP غير موجود.' });
   }
@@ -577,12 +580,16 @@ app.get('/api/plugin/files', (_req, res) => {
   walk(pluginDir);
 
   const testJsonPath = path.join(__dirname, 'public', 'test-results.json');
-  const testData = fs.existsSync(testJsonPath) ? JSON.parse(fs.readFileSync(testJsonPath, 'utf-8')) : { tests: [], zipSize: 0 };
+  const testData = fs.existsSync(testJsonPath)
+    ? JSON.parse(fs.readFileSync(testJsonPath, 'utf-8'))
+    : { tests: [], zipSize: 0, zipSha256: '', zipBase64: '' };
 
   res.json({
     files: fileList,
     tests: testData.tests,
     zipSize: testData.zipSize,
+    zipSha256: testData.zipSha256 || '',
+    zipBase64: testData.zipBase64 || '',
   });
 });
 
