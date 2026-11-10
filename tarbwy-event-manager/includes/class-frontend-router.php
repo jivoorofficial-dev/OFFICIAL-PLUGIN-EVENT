@@ -24,6 +24,7 @@ class FrontendRouter {
 
 		// Shortcodes for Gutenberg / Elementor compatibility if site editors embed inside pages
 		add_shortcode( 'tarbwy_landing_page', array( __CLASS__, 'render_landing_shortcode' ) );
+		add_shortcode( 'tarbwy_landing_v2', array( __CLASS__, 'render_landing_v2_shortcode' ) );
 		add_shortcode( 'tarbwy_registration_form', array( __CLASS__, 'render_registration_form_shortcode' ) );
 	}
 
@@ -32,6 +33,8 @@ class FrontendRouter {
 	 */
 	public static function register_rewrite_rules() {
 		add_rewrite_rule( '^launch/?$', 'index.php?tarbwy_route=landing', 'top' );
+		add_rewrite_rule( '^launch-v2/?$', 'index.php?tarbwy_route=landing_v2_redirect', 'top' );
+		add_rewrite_rule( '^launch/v2/?$', 'index.php?tarbwy_route=landing_v2_redirect', 'top' );
 		add_rewrite_rule( '^launch/vip/?$', 'index.php?tarbwy_route=vip', 'top' );
 		add_rewrite_rule( '^launch/ticket/?$', 'index.php?tarbwy_route=ticket', 'top' );
 		add_rewrite_rule( '^launch/checkin/?$', 'index.php?tarbwy_route=checkin', 'top' );
@@ -59,6 +62,8 @@ class FrontendRouter {
 			$path = trim( wp_parse_url( $uri, PHP_URL_PATH ), '/' );
 			if ( 'launch' === $path ) {
 				$route = 'landing';
+			} elseif ( 'launch-v2' === $path || 'launch/v2' === $path ) {
+				$route = 'landing_v2_redirect';
 			} elseif ( 'launch/vip' === $path ) {
 				$route = 'vip';
 			} elseif ( 'launch/ticket' === $path ) {
@@ -70,6 +75,11 @@ class FrontendRouter {
 
 		if ( empty( $route ) ) {
 			return;
+		}
+
+		if ( 'landing_v2_redirect' === $route || 'landing_v2' === $route ) {
+			wp_safe_redirect( home_url( '/launch' ), 301 );
+			exit;
 		}
 
 		$event = RestAPI::get_active_event();
@@ -111,10 +121,17 @@ class FrontendRouter {
 	 */
 	public static function render_landing_shortcode() {
 		ob_start();
-		$event            = RestAPI::get_active_event();
+		$event              = RestAPI::get_active_event();
 		$is_shortcode_embed = true;
 		include TARBWY_EM_PATH . 'templates/landing.php';
 		return ob_get_clean();
+	}
+
+	/**
+	 * Backward-compatible shortcode alias [tarbwy_landing_v2] -> renders /launch v2 template
+	 */
+	public static function render_landing_v2_shortcode() {
+		return self::render_landing_shortcode();
 	}
 
 	/**

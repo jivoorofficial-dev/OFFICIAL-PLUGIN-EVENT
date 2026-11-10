@@ -44,10 +44,10 @@ class RestAPI {
 			)
 		);
 
-		// 2. GET /vip-invitations/(?P<token>[a-f0-9]{32,64}) (Verify VIP Token & Load Prepopulated Info)
+		// 2. GET /vip-invitations/(?P<token>[A-Za-z0-9\-_]{6,128}) (Verify VIP Personal Code or Token & Load Prepopulated Info)
 		register_rest_route(
 			self::NAMESPACE_V1,
-			'/vip-invitations/(?P<token>[a-f0-9]{32,64})',
+			'/vip-invitations/(?P<token>[A-Za-z0-9\-_]{6,128})',
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'handle_get_vip_invitation' ),
@@ -55,10 +55,10 @@ class RestAPI {
 			)
 		);
 
-		// 3. POST /vip-invitations/(?P<token>[a-f0-9]{32,64})/rsvp (Submit VIP RSVP + Companions)
+		// 3. POST /vip-invitations/(?P<token>[A-Za-z0-9\-_]{6,128})/rsvp (Submit VIP RSVP + Companions)
 		register_rest_route(
 			self::NAMESPACE_V1,
-			'/vip-invitations/(?P<token>[a-f0-9]{32,64})/rsvp',
+			'/vip-invitations/(?P<token>[A-Za-z0-9\-_]{6,128})/rsvp',
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'handle_submit_vip_rsvp' ),
@@ -66,10 +66,10 @@ class RestAPI {
 			)
 		);
 
-		// 4. GET /tickets/view/(?P<token>[a-f0-9]{32,64}) (View Confirmed Ticket Without Exposing PII)
+		// 4. GET /tickets/view/(?P<token>[A-Za-z0-9\-_]{8,128}) (View Confirmed Ticket Without Exposing PII)
 		register_rest_route(
 			self::NAMESPACE_V1,
-			'/tickets/view/(?P<token>[a-f0-9]{32,64})',
+			'/tickets/view/(?P<token>[A-Za-z0-9\-_]{8,128})',
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'handle_get_ticket_view' ),
@@ -199,6 +199,13 @@ class RestAPI {
 	}
 
 	/**
+	 * Helper: Issue or retrieve a guest QR ticket (delegates to QRGenerator)
+	 */
+	public static function issue_guest_ticket( $event_id, $guest_id, $force_reissue = false ) {
+		return QRGenerator::issue_ticket_for_guest( $event_id, $guest_id, $force_reissue );
+	}
+
+	/**
 	 * Helper: Count total confirmed attendees (including companions) against 500 capacity
 	 */
 	public static function get_confirmed_count( $event_id ) {
@@ -294,33 +301,63 @@ class RestAPI {
 		);
 		$admin_note = $shared_email_count > 0 ? 'تنبيه نظام: البريد الإلكتروني مشترك مع ضيف آخر مسجل في الحدث.' : '';
 
-		$now            = current_time( 'mysql' );
-		$reference_code = Security::generate_reference_code( 'TRB' );
+		$now               = current_time( 'mysql' );
+		$reference_code    = Security::generate_reference_code( 'TRB' );
+		$applicant_payload = wp_json_encode(
+			array(
+				'full_name'                  => $full_name,
+				'email'                      => $email,
+				'phone'                      => $phone,
+				'organization'               => $organization,
+				'job_title'                  => $job_title,
+				'dietary_requirements'       => $dietary,
+				'accessibility_requirements' => $access,
+				'companions'                 => $companions,
+			),
+			JSON_UNESCAPED_UNICODE
+		);
 
 		// Create Registration Record (Status starts 'pending', no QR issued yet)
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert(
-			$reg_table,
-			array(
-				'event_id'       => (int) $event->id,
-				'reference_code' => $reference_code,
-				'review_status'  => 'pending',
-				'submitted_at'   => $now,
-				'created_at'     => $now,
-				'updated_at'     => $now,
-			),
-			array( '%d', '%s', '%s', '%s', '%s', '%s' )
+		$reg_insert_data = array(
+			'event_id'          => (int) $event->id,
+			'reference_code'    => $reference_code,
+			'review_status'     => 'pending',
+			'applicant_payload' => $applicant_payload,
+			'submitted_at'      => $now,
+			'created_at'        => $now,
+			'updated_at'        => $now,
 		);
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$reg_ok = $wpdb->insert(
+			$reg_table,
+			$reg_insert_data,
+			array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
+		);
+		if ( ! $reg_ok ) {
+			Installer::ensure_schema_columns();
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$reg_ok = $wpdb->insert(
+				$reg_table,
+				$reg_insert_data,
+				array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
+			);
+			if ( ! $reg_ok ) {
+				unset( $reg_insert_data['applicant_payload'] );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$wpdb->insert(
+					$reg_table,
+					$reg_insert_data,
+					array( '%d', '%s', '%s', '%s', '%s', '%s' )
+				);
+			}
+		}
 		$registration_id = (int) $wpdb->insert_id;
 
-		// Create Primary Guest Record
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert(
-			$guests_table,
+		// Create Primary Guest Record via resilient safe_insert_guest (never passes NULL as %d 0)
+		$primary_guest_id = Installer::safe_insert_guest(
 			array(
 				'event_id'                   => (int) $event->id,
 				'registration_id'            => $registration_id,
-				'parent_guest_id'            => null,
 				'guest_type'                 => 'public',
 				'full_name'                  => $full_name,
 				'email'                      => $email,
@@ -334,20 +371,20 @@ class RestAPI {
 				'admin_notes'                => $admin_note,
 				'created_at'                 => $now,
 				'updated_at'                 => $now,
-			),
-			array( '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+			)
 		);
-		$primary_guest_id = (int) $wpdb->insert_id;
 
 		// Link primary_guest_id to registration
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
-			$reg_table,
-			array( 'primary_guest_id' => $primary_guest_id ),
-			array( 'id' => $registration_id ),
-			array( '%d' ),
-			array( '%d' )
-		);
+		if ( $primary_guest_id > 0 && $registration_id > 0 ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->update(
+				$reg_table,
+				array( 'primary_guest_id' => $primary_guest_id ),
+				array( 'id' => $registration_id ),
+				array( '%d' ),
+				array( '%d' )
+			);
+		}
 
 		// Create Separate Companion Records
 		$companion_ids = array();
@@ -360,13 +397,11 @@ class RestAPI {
 			$c_phone = isset( $comp['phone'] ) ? sanitize_text_field( $comp['phone'] ) : '';
 			$c_rel   = isset( $comp['job_title'] ) ? sanitize_text_field( $comp['job_title'] ) : 'مرافق';
 
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->insert(
-				$guests_table,
+			$cid = Installer::safe_insert_guest(
 				array(
 					'event_id'        => (int) $event->id,
 					'registration_id' => $registration_id,
-					'parent_guest_id' => $primary_guest_id,
+					'parent_guest_id' => $primary_guest_id > 0 ? $primary_guest_id : null,
 					'guest_type'      => 'companion',
 					'full_name'       => $c_name,
 					'email'           => $c_email,
@@ -377,13 +412,14 @@ class RestAPI {
 					'checkin_status'  => 'not_checked_in',
 					'created_at'      => $now,
 					'updated_at'      => $now,
-				),
-				array( '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+				)
 			);
-			$companion_ids[] = (int) $wpdb->insert_id;
+			if ( $cid > 0 ) {
+				$companion_ids[] = $cid;
+			}
 		}
 
-		// Queue receipt email to primary guest
+		// Queue & immediately dispatch receipt email to primary guest (allow_duplicate=true so new registrations with same test email always receive receipt)
 		EmailManager::enqueue_email(
 			(int) $event->id,
 			$primary_guest_id,
@@ -391,9 +427,14 @@ class RestAPI {
 			$email,
 			array(
 				'guest_name'     => $full_name,
+				'email'          => $email,
+				'phone'          => $phone,
+				'organization'   => $organization,
+				'job_title'      => $job_title,
 				'event_title'    => $event->title,
 				'reference_code' => $reference_code,
-			)
+			),
+			true
 		);
 
 		Security::log_activity(
@@ -402,7 +443,8 @@ class RestAPI {
 			'registration',
 			$registration_id,
 			array(
-				'reference_code'  => $reference_code,
+				'reference_code'   => $reference_code,
+				'primary_guest_id' => $primary_guest_id,
 				'companions_count' => count( $companion_ids ),
 			)
 		);
@@ -420,43 +462,94 @@ class RestAPI {
 	}
 
 	/**
-	 * 2. GET /vip-invitations/{token} — Verify Token Hash & Return Prepopulated Guest Info
+	/**
+	 * Resolve a VIP invitation record by standalone Personal Invitation Code (e.g. VIP-8F4A-2C91),
+	 * 8-char hex code, full 48-char raw token, or pasted URL.
+	 *
+	 * @param string $raw_input User-supplied VIP code or token.
+	 * @return object|null Invitation + Guest + Event joined row.
+	 */
+	public static function find_vip_invitation_by_input( $raw_input ) {
+		global $wpdb;
+
+		$parsed       = Security::parse_vip_code_input( $raw_input );
+		$clean_hex    = $parsed['clean_hex'];
+		$raw_trimmed  = $parsed['raw_input'];
+		$inv_table    = $wpdb->prefix . 'tarbwy_invitations';
+		$guests_table = $wpdb->prefix . 'tarbwy_guests';
+		$events_table = $wpdb->prefix . 'tarbwy_events';
+
+		if ( strlen( $clean_hex ) < 6 && strlen( $raw_trimmed ) < 6 ) {
+			return null;
+		}
+
+		$hash_exact = Security::hash_token( $clean_hex ? $clean_hex : $raw_trimmed );
+		$hash_raw   = Security::hash_token( $raw_trimmed );
+
+		// 1. Try exact token_hash match first (48-char raw token)
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$inv = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT i.*, g.full_name, g.email, g.organization, g.job_title, g.rsvp_status,
+				        e.title AS event_title, e.venue_name, e.max_companions_vip, e.capacity_total
+				 FROM {$inv_table} i
+				 INNER JOIN {$guests_table} g ON i.guest_id = g.id AND i.event_id = g.event_id
+				 INNER JOIN {$events_table} e ON i.event_id = e.id
+				 WHERE i.token_hash IN (%s, %s)
+				 ORDER BY i.id DESC LIMIT 1",
+				$hash_exact,
+				$hash_raw
+			)
+		);
+
+		// 2. If not found, match by standalone Personal Invitation Code prefix (first 8 hex chars of token_preview or token_hash)
+		if ( ! $inv && strlen( $clean_hex ) >= 6 ) {
+			$prefix8 = substr( $clean_hex, 0, 8 );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$inv = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT i.*, g.full_name, g.email, g.organization, g.job_title, g.rsvp_status,
+					        e.title AS event_title, e.venue_name, e.max_companions_vip, e.capacity_total
+					 FROM {$inv_table} i
+					 INNER JOIN {$guests_table} g ON i.guest_id = g.id AND i.event_id = g.event_id
+					 INNER JOIN {$events_table} e ON i.event_id = e.id
+					 WHERE LOWER(LEFT(i.token_preview, %d)) = %s
+					    OR LOWER(LEFT(i.token_hash, %d)) = %s
+					 ORDER BY i.id DESC LIMIT 1",
+					strlen( $prefix8 ),
+					$prefix8,
+					strlen( $prefix8 ),
+					$prefix8
+				)
+			);
+		}
+
+		return $inv;
+	}
+
+	/**
+	 * 2. GET /vip-invitations/{token} — Verify Personal Invitation Code or Token & Return Prepopulated Guest Info
 	 */
 	public static function handle_get_vip_invitation( WP_REST_Request $request ) {
 		global $wpdb;
 		Security::send_no_leak_headers();
 
-		$raw_token  = $request->get_param( 'token' );
-		$token_hash = Security::hash_token( $raw_token );
-
-		$inv_table    = $wpdb->prefix . 'tarbwy_invitations';
-		$guests_table = $wpdb->prefix . 'tarbwy_guests';
-		$events_table = $wpdb->prefix . 'tarbwy_events';
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$inv = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT i.*, g.full_name, g.organization, g.job_title, g.rsvp_status, e.title AS event_title, e.venue_name, e.max_companions_vip
-				 FROM {$inv_table} i
-				 INNER JOIN {$guests_table} g ON i.guest_id = g.id AND i.event_id = g.event_id
-				 INNER JOIN {$events_table} e ON i.event_id = e.id
-				 WHERE i.token_hash = %s LIMIT 1",
-				$token_hash
-			)
-		);
+		$raw_token = (string) $request->get_param( 'token' );
+		$inv       = self::find_vip_invitation_by_input( $raw_token );
 
 		if ( ! $inv ) {
-			return new WP_REST_Response( array( 'code' => 'invalid_token', 'message' => 'رابط الدعوة غير صالح أو غير معروف.' ), 404 );
+			return new WP_REST_Response( array( 'code' => 'invalid_token', 'message' => 'رمز الدعوة الشخصي غير صالح أو غير معروف. يرجى التأكد من نسخ الرمز كما ورد في رسالة الدعوة.' ), 404 );
 		}
 
 		if ( 'revoked' === $inv->status ) {
-			return new WP_REST_Response( array( 'code' => 'revoked_token', 'message' => 'تم إبطال رابط الدعوة هذا وإصدار رابط جديد.' ), 410 );
+			return new WP_REST_Response( array( 'code' => 'revoked_token', 'message' => 'تم إبطال رمز الدعوة هذا وإصدار رمز جديد.' ), 410 );
 		}
 
 		if ( 'expired' === $inv->status || ( ! empty( $inv->expires_at ) && strtotime( $inv->expires_at ) < current_time( 'timestamp' ) ) ) {
-			return new WP_REST_Response( array( 'code' => 'expired_token', 'message' => 'انتهت صلاحية رابط الدعوة هذا.' ), 410 );
+			return new WP_REST_Response( array( 'code' => 'expired_token', 'message' => 'انتهت صلاحية رمز الدعوة هذا.' ), 410 );
 		}
 
+		$inv_table = $wpdb->prefix . 'tarbwy_invitations';
 		// Update last_accessed_at timestamp
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
@@ -468,17 +561,38 @@ class RestAPI {
 		);
 
 		$max_companions = null !== $inv->max_companions_override ? (int) $inv->max_companions_override : (int) $inv->max_companions_vip;
+		$personal_code  = Security::format_vip_personal_code( ! empty( $inv->token_preview ) ? $inv->token_preview : $inv->token_hash );
+
+		// If already confirmed, also return issued tickets so the VIP guest can view their QR pass immediately
+		$issued_tickets = array();
+		if ( 'confirmed' === $inv->rsvp_status ) {
+			$tkt = QRGenerator::issue_ticket_for_guest( (int) $inv->event_id, (int) $inv->guest_id, false );
+			if ( ! is_wp_error( $tkt ) ) {
+				$issued_tickets[] = array(
+					'guest_id'         => (int) $inv->guest_id,
+					'guest_name'       => $inv->full_name,
+					'guest_type'       => 'vip',
+					'ticket_reference' => $tkt['ticket_reference'],
+					'qr_payload'       => $tkt['qr_payload'],
+					'qr_token'         => $tkt['qr_payload'],
+					'raw_token'        => $tkt['raw_token'],
+					'ticket_url'       => $tkt['ticket_url'],
+				);
+			}
+		}
 
 		return new WP_REST_Response(
 			array(
 				'status'         => $inv->status,
 				'rsvp_status'    => $inv->rsvp_status,
+				'personal_code'  => $personal_code,
 				'guest_name'     => $inv->full_name,
 				'organization'   => $inv->organization,
 				'job_title'      => $inv->job_title,
 				'event_title'    => $inv->event_title,
 				'venue_name'     => $inv->venue_name,
 				'max_companions' => $max_companions,
+				'issued_tickets' => $issued_tickets,
 			),
 			200
 		);
@@ -491,9 +605,8 @@ class RestAPI {
 		global $wpdb;
 		Security::send_no_leak_headers();
 
-		$raw_token  = $request->get_param( 'token' );
-		$token_hash = Security::hash_token( $raw_token );
-		$params     = $request->get_json_params();
+		$raw_token = (string) $request->get_param( 'token' );
+		$params    = $request->get_json_params();
 		if ( empty( $params ) ) {
 			$params = $request->get_params();
 		}
@@ -507,22 +620,11 @@ class RestAPI {
 
 		$inv_table    = $wpdb->prefix . 'tarbwy_invitations';
 		$guests_table = $wpdb->prefix . 'tarbwy_guests';
-		$events_table = $wpdb->prefix . 'tarbwy_events';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$inv = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT i.*, g.full_name, g.email, g.organization, e.title AS event_title, e.venue_name, e.max_companions_vip, e.capacity_total
-				 FROM {$inv_table} i
-				 INNER JOIN {$guests_table} g ON i.guest_id = g.id AND i.event_id = g.event_id
-				 INNER JOIN {$events_table} e ON i.event_id = e.id
-				 WHERE i.token_hash = %s LIMIT 1",
-				$token_hash
-			)
-		);
+		$inv = self::find_vip_invitation_by_input( $raw_token );
 
-		if ( ! $inv || 'active' !== $inv->status ) {
-			return new WP_REST_Response( array( 'message' => 'رابط الدعوة غير صالح أو تم استخدامه/إبطاله مسبقاً.' ), 403 );
+		if ( ! $inv || in_array( $inv->status, array( 'revoked', 'expired' ), true ) ) {
+			return new WP_REST_Response( array( 'message' => 'رمز الدعوة الشخصي غير صالح أو تم إبطاله.' ), 403 );
 		}
 
 		$max_companions = null !== $inv->max_companions_override ? (int) $inv->max_companions_override : (int) $inv->max_companions_vip;
@@ -533,9 +635,11 @@ class RestAPI {
 			);
 		}
 
-		$now = current_time( 'mysql' );
+		$now           = current_time( 'mysql' );
+		$personal_code = Security::format_vip_personal_code( ! empty( $inv->token_preview ) ? $inv->token_preview : $inv->token_hash );
 
 		if ( 'decline' === $decision ) {
+			QRGenerator::revoke_tickets_for_guest( (int) $inv->event_id, (int) $inv->guest_id, 'vip_rsvp_declined' );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->update(
 				$guests_table,
@@ -561,6 +665,7 @@ class RestAPI {
 				array(
 					'guest_name'  => $inv->full_name,
 					'event_title' => $inv->event_title,
+					'vip_code'    => $personal_code,
 				),
 				true
 			);
@@ -569,15 +674,16 @@ class RestAPI {
 
 			return new WP_REST_Response(
 				array(
-					'rsvp_status' => 'declined',
-					'message'     => 'تم تسجيل اعتذاركم عن الحضور. نشكركم ونتطلع للقائكم في مناسبات قادمة.',
+					'rsvp_status'   => 'declined',
+					'personal_code' => $personal_code,
+					'message'       => 'تم تسجيل اعتذاركم عن الحضور. نشكركم ونتطلع للقائكم في مناسبات قادمة.',
 				),
 				200
 			);
 		}
 
 		// Check capacity before confirming
-		$needed_seats    = 1 + count( $companions );
+		$needed_seats     = 1 + count( $companions );
 		$confirmed_so_far = self::get_confirmed_count( (int) $inv->event_id );
 		if ( ( $confirmed_so_far + $needed_seats ) > (int) $inv->capacity_total ) {
 			return new WP_REST_Response(
@@ -610,26 +716,14 @@ class RestAPI {
 		if ( ! is_wp_error( $primary_ticket ) ) {
 			$ticket_url       = QRGenerator::get_ticket_url( $primary_ticket['raw_token'] );
 			$issued_tickets[] = array(
+				'guest_id'         => (int) $inv->guest_id,
 				'guest_name'       => $inv->full_name,
 				'guest_type'       => 'vip',
 				'ticket_reference' => $primary_ticket['ticket_reference'],
+				'qr_payload'       => $primary_ticket['qr_payload'],
+				'qr_token'         => $primary_ticket['qr_payload'],
+				'raw_token'        => $primary_ticket['raw_token'],
 				'ticket_url'       => $ticket_url,
-				'qr_token'         => $primary_ticket['raw_token'],
-			);
-
-			EmailManager::enqueue_email(
-				(int) $inv->event_id,
-				(int) $inv->guest_id,
-				'vip_rsvp_confirmed',
-				$inv->email,
-				array(
-					'guest_name'       => $inv->full_name,
-					'event_title'      => $inv->event_title,
-					'venue_name'       => $inv->venue_name,
-					'ticket_reference' => $primary_ticket['ticket_reference'],
-					'ticket_url'       => $ticket_url,
-				),
-				true
 			);
 		}
 
@@ -642,9 +736,7 @@ class RestAPI {
 			$c_email = isset( $comp['email'] ) && is_email( $comp['email'] ) ? sanitize_email( $comp['email'] ) : '';
 			$c_phone = isset( $comp['phone'] ) ? sanitize_text_field( $comp['phone'] ) : '';
 
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->insert(
-				$guests_table,
+			$comp_id = Installer::safe_insert_guest(
 				array(
 					'event_id'        => (int) $inv->event_id,
 					'parent_guest_id' => (int) $inv->guest_id,
@@ -658,41 +750,66 @@ class RestAPI {
 					'checkin_status'  => 'not_checked_in',
 					'created_at'      => $now,
 					'updated_at'      => $now,
-				),
-				array( '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+				)
 			);
-			$comp_id = (int) $wpdb->insert_id;
 
 			if ( $comp_id ) {
 				$c_ticket = QRGenerator::issue_ticket_for_guest( (int) $inv->event_id, $comp_id );
 				if ( ! is_wp_error( $c_ticket ) ) {
 					$c_url            = QRGenerator::get_ticket_url( $c_ticket['raw_token'] );
 					$issued_tickets[] = array(
-						'guest_name'       => $c_name,
+						'guest_id'         => $comp_id,
+						'guest_name'       => $c_name . ' (مرافق: ' . $inv->full_name . ')',
 						'guest_type'       => 'companion',
 						'ticket_reference' => $c_ticket['ticket_reference'],
+						'qr_payload'       => $c_ticket['qr_payload'],
+						'qr_token'         => $c_ticket['qr_payload'],
+						'raw_token'        => $c_ticket['raw_token'],
 						'ticket_url'       => $c_url,
-						'qr_token'         => $c_ticket['raw_token'],
 					);
 
-					// Per spec Section 5: If companion has no email, send their ticket to the primary guest email clearly specifying cardholder name
-					$target_email = ! empty( $c_email ) ? $c_email : $inv->email;
-					EmailManager::enqueue_email(
-						(int) $inv->event_id,
-						$comp_id,
-						'ticket_issued',
-						$target_email,
-						array(
-							'guest_name'       => $c_name . ' (مرافق: ' . $inv->full_name . ')',
-							'event_title'      => $inv->event_title,
-							'venue_name'       => $inv->venue_name,
-							'ticket_reference' => $c_ticket['ticket_reference'],
-							'ticket_url'       => $c_url,
-						),
-						true
-					);
+					// If companion has their own distinct email, send them an individual pass email too
+					if ( ! empty( $c_email ) && strtolower( $c_email ) !== strtolower( $inv->email ) ) {
+						EmailManager::enqueue_email(
+							(int) $inv->event_id,
+							$comp_id,
+							'ticket_issued',
+							$c_email,
+							array(
+								'guest_name'       => $c_name . ' (مرافق: ' . $inv->full_name . ')',
+								'event_title'      => $inv->event_title,
+								'venue_name'       => $inv->venue_name,
+								'ticket_reference' => $c_ticket['ticket_reference'],
+								'qr_payload'       => $c_ticket['qr_payload'],
+								'ticket_url'       => $c_url,
+							),
+							true
+						);
+					}
 				}
 			}
+		}
+
+		// Send master VIP confirmation email containing all issued QR passes (VIP + companions)
+		if ( ! empty( $issued_tickets ) ) {
+			EmailManager::enqueue_email(
+				(int) $inv->event_id,
+				(int) $inv->guest_id,
+				'vip_rsvp_confirmed',
+				$inv->email,
+				array(
+					'guest_name'       => $inv->full_name,
+					'event_title'      => $inv->event_title,
+					'venue_name'       => $inv->venue_name,
+					'vip_code'         => $personal_code,
+					'ticket_reference' => $issued_tickets[0]['ticket_reference'],
+					'qr_payload'       => $issued_tickets[0]['qr_payload'],
+					'ticket_url'       => $issued_tickets[0]['ticket_url'],
+					'tickets_count'    => (string) count( $issued_tickets ),
+					'all_tickets'      => $issued_tickets,
+				),
+				true
+			);
 		}
 
 		Security::log_activity(
@@ -706,6 +823,7 @@ class RestAPI {
 		return new WP_REST_Response(
 			array(
 				'rsvp_status'    => 'confirmed',
+				'personal_code'  => $personal_code,
 				'issued_tickets' => $issued_tickets,
 				'message'        => 'تم تأكيد حضوركم بنجاح وإصدار بطاقات الدخول الفردية المزودة برمز QR.',
 			),
@@ -720,7 +838,7 @@ class RestAPI {
 		global $wpdb;
 		Security::send_no_leak_headers();
 
-		$raw_token  = $request->get_param( 'token' );
+		$raw_token  = trim( (string) $request->get_param( 'token' ) );
 		$token_hash = Security::hash_token( $raw_token );
 
 		$tickets_table = $wpdb->prefix . 'tarbwy_tickets';
@@ -730,15 +848,41 @@ class RestAPI {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$ticket = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT t.ticket_reference, t.status AS ticket_status, g.full_name, g.guest_type, g.organization, g.rsvp_status, g.checkin_status,
+				"SELECT t.ticket_reference, t.qr_payload, t.token_preview, t.status AS ticket_status, g.full_name, g.guest_type, g.organization, g.rsvp_status, g.checkin_status,
 				        e.title AS event_title, e.venue_name, e.venue_address, e.settings_json
 				 FROM {$tickets_table} t
 				 INNER JOIN {$guests_table} g ON t.guest_id = g.id AND t.event_id = g.event_id
 				 INNER JOIN {$events_table} e ON t.event_id = e.id
-				 WHERE t.token_hash = %s LIMIT 1",
-				$token_hash
+				 WHERE t.token_hash = %s OR t.token_preview = %s OR UPPER(t.ticket_reference) = %s OR UPPER(t.qr_payload) = %s
+				 ORDER BY CASE WHEN t.status = 'active' THEN 0 WHEN t.status = 'used' THEN 1 ELSE 2 END ASC, t.id DESC
+				 LIMIT 1",
+				$token_hash,
+				$raw_token,
+				strtoupper( $raw_token ),
+				strtoupper( $raw_token )
 			)
 		);
+
+		if ( ! $ticket ) {
+			Installer::heal_orphaned_registrations();
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$ticket = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT t.ticket_reference, t.qr_payload, t.token_preview, t.status AS ticket_status, g.full_name, g.guest_type, g.organization, g.rsvp_status, g.checkin_status,
+					        e.title AS event_title, e.venue_name, e.venue_address, e.settings_json
+					 FROM {$tickets_table} t
+					 INNER JOIN {$guests_table} g ON t.guest_id = g.id AND t.event_id = g.event_id
+					 INNER JOIN {$events_table} e ON t.event_id = e.id
+					 WHERE t.token_hash = %s OR t.token_preview = %s OR UPPER(t.ticket_reference) = %s OR UPPER(t.qr_payload) = %s
+					 ORDER BY CASE WHEN t.status = 'active' THEN 0 WHEN t.status = 'used' THEN 1 ELSE 2 END ASC, t.id DESC
+					 LIMIT 1",
+					$token_hash,
+					$raw_token,
+					strtoupper( $raw_token ),
+					strtoupper( $raw_token )
+				)
+			);
+		}
 
 		if ( ! $ticket ) {
 			return new WP_REST_Response( array( 'code' => 'not_found', 'message' => 'بطاقة الدخول غير موجودة أو الرابط غير صحيح.' ), 404 );
@@ -752,7 +896,8 @@ class RestAPI {
 			return new WP_REST_Response( array( 'code' => 'not_confirmed', 'message' => 'هذه البطاقة غير مؤكدة الحضور.' ), 403 );
 		}
 
-		$settings = json_decode( (string) $ticket->settings_json, true );
+		$settings   = json_decode( (string) $ticket->settings_json, true );
+		$qr_payload = QRGenerator::get_canonical_qr_payload( $ticket );
 
 		// Explicitly return ONLY non-PII card details required by Spec 4.4 (No email, no phone)
 		return new WP_REST_Response(
@@ -761,52 +906,95 @@ class RestAPI {
 				'holder_name'        => $ticket->full_name,
 				'organization'       => $ticket->organization,
 				'guest_type'         => $ticket->guest_type,
-				'ticket_reference'   => $ticket->ticket_reference,
+				'ticket_reference'   => $qr_payload,
 				'ticket_status'      => $ticket->ticket_status,
 				'checkin_status'     => $ticket->checkin_status,
 				'venue_name'         => $ticket->venue_name,
 				'venue_address'      => $ticket->venue_address,
 				'date_display'       => isset( $settings['date_display'] ) ? $settings['date_display'] : 'سيُعلن لاحقاً',
 				'entry_instructions' => isset( $settings['entry_instructions'] ) ? $settings['entry_instructions'] : '',
-				'qr_payload'         => $raw_token,
+				'qr_payload'         => $qr_payload,
 			),
 			200
 		);
 	}
 
 	/**
-	 * 5. GET /checkin/lookup — Staff Search by Name, Email, or Ticket Reference (Minimal Guest Data)
+	 * 5. GET /checkin/lookup — Staff Search by Name, Email, Phone, or Ticket Reference
 	 */
 	public static function handle_checkin_lookup( WP_REST_Request $request ) {
 		global $wpdb;
-		$query    = sanitize_text_field( (string) $request->get_param( 'q' ) );
+		$query      = trim( sanitize_text_field( (string) $request->get_param( 'q' ) ) );
+		$raw_filter = $request->get_param( 'filter' ) ? $request->get_param( 'filter' ) : $request->get_param( 'status' );
+		$filter     = sanitize_key( (string) $raw_filter );
+		if ( '' === $filter ) {
+			$filter = 'all';
+		}
 		$event_id = absint( $request->get_param( 'event_id' ) );
 		if ( ! $event_id ) {
 			$ev       = self::get_active_event();
 			$event_id = $ev ? (int) $ev->id : 1;
 		}
 
-		if ( mb_strlen( $query ) < 2 ) {
-			return new WP_REST_Response( array( 'results' => array() ), 200 );
-		}
-
 		$guests_table  = $wpdb->prefix . 'tarbwy_guests';
 		$tickets_table = $wpdb->prefix . 'tarbwy_tickets';
-		$like          = '%' . $wpdb->esc_like( $query ) . '%';
+		$reg_table     = $wpdb->prefix . 'tarbwy_registrations';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$extra_where = '';
+		if ( 'confirmed' === $filter ) {
+			$extra_where = " AND g.rsvp_status = 'confirmed'";
+		} elseif ( 'pending_checkin' === $filter ) {
+			$extra_where = " AND g.rsvp_status = 'confirmed' AND g.checkin_status != 'checked_in'";
+		} elseif ( 'checked_in' === $filter ) {
+			$extra_where = " AND g.checkin_status = 'checked_in'";
+		}
+
+		// If query is empty, return matching attendees for the selected filter chip
+		if ( '' === $query ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT g.id AS guest_id, g.full_name, g.email, g.phone, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
+					        t.id AS ticket_id, t.ticket_reference, t.status AS ticket_status, p.full_name AS parent_name, r.reference_code
+					 FROM {$guests_table} g
+					 LEFT JOIN {$tickets_table} t ON g.id = t.guest_id AND t.status IN ('active', 'used')
+					 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
+					 LEFT JOIN {$reg_table} r ON g.registration_id = r.id
+					 WHERE g.event_id = %d {$extra_where}
+					 ORDER BY CASE WHEN g.rsvp_status = 'confirmed' THEN 0 ELSE 1 END ASC, g.id DESC
+					 LIMIT 35",
+					$event_id
+				)
+			);
+			return new WP_REST_Response( array( 'results' => $results ), 200 );
+		}
+
+		$like = '%' . $wpdb->esc_like( $query ) . '%';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT g.id AS guest_id, g.full_name, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
-				        t.id AS ticket_id, t.ticket_reference, t.status AS ticket_status, p.full_name AS parent_name
+				"SELECT g.id AS guest_id, g.full_name, g.email, g.phone, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
+				        t.id AS ticket_id, t.ticket_reference, t.status AS ticket_status, p.full_name AS parent_name, r.reference_code
 				 FROM {$guests_table} g
 				 LEFT JOIN {$tickets_table} t ON g.id = t.guest_id AND t.status IN ('active', 'used')
 				 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
-				 WHERE g.event_id = %d
-				   AND (g.full_name LIKE %s OR g.email LIKE %s OR t.ticket_reference LIKE %s)
-				 ORDER BY g.full_name ASC
-				 LIMIT 25",
+				 LEFT JOIN {$reg_table} r ON g.registration_id = r.id
+				 WHERE g.event_id = %d {$extra_where}
+				   AND (
+				        g.full_name LIKE %s
+				        OR g.email LIKE %s
+				        OR t.ticket_reference LIKE %s
+				        OR g.phone LIKE %s
+				        OR g.organization LIKE %s
+				        OR r.reference_code LIKE %s
+				   )
+				 ORDER BY CASE WHEN g.rsvp_status = 'confirmed' THEN 0 ELSE 1 END ASC, g.full_name ASC
+				 LIMIT 35",
 				$event_id,
+				$like,
+				$like,
+				$like,
 				$like,
 				$like,
 				$like
@@ -817,11 +1005,40 @@ class RestAPI {
 	}
 
 	/**
+	 * Extract raw QR token or ticket reference from scanned payload (supports raw token, full URL ?t=..., or TKT-2026-...)
+	 *
+	 * @param string $raw_payload Scanned string from camera or manual input.
+	 * @return string Normalized token or ticket reference.
+	 */
+	public static function extract_scanned_token( $raw_payload ) {
+		$str = trim( (string) $raw_payload );
+		if ( '' === $str ) {
+			return '';
+		}
+		if ( false !== strpos( $str, 'http' ) || false !== strpos( $str, '?' ) || false !== strpos( $str, 't=' ) || false !== strpos( $str, 'token=' ) ) {
+			$parsed = wp_parse_url( $str );
+			if ( ! empty( $parsed['query'] ) ) {
+				parse_str( $parsed['query'], $q_vars );
+				if ( ! empty( $q_vars['t'] ) ) {
+					return trim( sanitize_text_field( (string) $q_vars['t'] ) );
+				}
+				if ( ! empty( $q_vars['token'] ) ) {
+					return trim( sanitize_text_field( (string) $q_vars['token'] ) );
+				}
+				if ( ! empty( $q_vars['ref'] ) ) {
+					return trim( sanitize_text_field( (string) $q_vars['ref'] ) );
+				}
+			}
+		}
+		return sanitize_text_field( $str );
+	}
+
+	/**
 	 * 6. POST /checkin/scan — Atomic QR Scan Check-in (Prevents Concurrent Duplicate Entry)
 	 *
 	 * CRITICAL SPEC SECTION 9:
-	 * - QR holds random token only.
-	 * - Lookup by SHA-256 hash.
+	 * - QR holds random token only (also supports scanned ticket URL or TKT-... reference).
+	 * - Lookup by SHA-256 hash or ticket_reference.
 	 * - Verify ticket is active and RSVP is confirmed.
 	 * - Do NOT use unprotected SELECT then INSERT.
 	 * - Use UNIQUE constraint on ticket_id in tarbwy_checkins and atomic INSERT IGNORE + affected_rows check.
@@ -834,7 +1051,8 @@ class RestAPI {
 			$params = $request->get_params();
 		}
 
-		$raw_token    = isset( $params['qr_token'] ) ? sanitize_text_field( $params['qr_token'] ) : '';
+		$raw_input    = isset( $params['qr_token'] ) ? (string) $params['qr_token'] : '';
+		$raw_token    = self::extract_scanned_token( $raw_input );
 		$device_label = isset( $params['device_label'] ) ? sanitize_text_field( $params['device_label'] ) : 'Check-in Terminal';
 
 		if ( empty( $raw_token ) ) {
@@ -847,29 +1065,57 @@ class RestAPI {
 			);
 		}
 
-		$token_hash     = Security::hash_token( $raw_token );
-		$tickets_table  = $wpdb->prefix . 'tarbwy_tickets';
-		$guests_table   = $wpdb->prefix . 'tarbwy_guests';
+		$token_hash    = Security::hash_token( $raw_token );
+		$tickets_table = $wpdb->prefix . 'tarbwy_tickets';
+		$guests_table  = $wpdb->prefix . 'tarbwy_guests';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$record = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT t.id AS ticket_id, t.event_id, t.guest_id, t.ticket_reference, t.status AS ticket_status,
-				        g.full_name, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
-				        p.full_name AS parent_name
+				"SELECT t.id AS ticket_id, t.event_id, t.guest_id, t.ticket_reference, t.qr_payload, t.status AS ticket_status,
+				        g.full_name, g.email, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
+				        p.full_name AS parent_name, p.email AS parent_email
 				 FROM {$tickets_table} t
 				 INNER JOIN {$guests_table} g ON t.guest_id = g.id AND t.event_id = g.event_id
 				 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
-				 WHERE t.token_hash = %s LIMIT 1",
-				$token_hash
+				 WHERE t.token_hash = %s OR t.token_preview = %s OR UPPER(t.ticket_reference) = %s OR UPPER(t.qr_payload) = %s
+				 ORDER BY CASE WHEN t.status = 'active' THEN 0 ELSE 1 END ASC, t.id DESC
+				 LIMIT 1",
+				$token_hash,
+				$raw_token,
+				strtoupper( $raw_token ),
+				strtoupper( $raw_token )
 			)
 		);
+
+		// Auto-heal and retry if not found on initial lookup
+		if ( ! $record ) {
+			Installer::heal_orphaned_registrations();
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$record = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT t.id AS ticket_id, t.event_id, t.guest_id, t.ticket_reference, t.qr_payload, t.status AS ticket_status,
+					        g.full_name, g.email, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
+					        p.full_name AS parent_name, p.email AS parent_email
+					 FROM {$tickets_table} t
+					 INNER JOIN {$guests_table} g ON t.guest_id = g.id AND t.event_id = g.event_id
+					 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
+					 WHERE t.token_hash = %s OR t.token_preview = %s OR UPPER(t.ticket_reference) = %s OR UPPER(t.qr_payload) = %s
+					 ORDER BY CASE WHEN t.status = 'active' THEN 0 ELSE 1 END ASC, t.id DESC
+					 LIMIT 1",
+					$token_hash,
+					$raw_token,
+					strtoupper( $raw_token ),
+					strtoupper( $raw_token )
+				)
+			);
+		}
 
 		if ( ! $record ) {
 			return new WP_REST_Response(
 				array(
 					'result_code' => 'unknown',
-					'message'     => 'بطاقة غير معروفة — رمز QR غير مسجل في النظام.',
+					'message'     => 'بطاقة غير معروفة — رمز QR أو رقم التذكرة غير مسجل في النظام.',
 				),
 				404
 			);
@@ -888,25 +1134,57 @@ class RestAPI {
 			$params = $request->get_params();
 		}
 
-		$guest_id     = isset( $params['guest_id'] ) ? absint( $params['guest_id'] ) : 0;
-		$device_label = isset( $params['device_label'] ) ? sanitize_text_field( $params['device_label'] ) : 'Manual Desk';
+		$guest_id         = isset( $params['guest_id'] ) ? absint( $params['guest_id'] ) : 0;
+		$ticket_reference = isset( $params['ticket_reference'] ) ? sanitize_text_field( $params['ticket_reference'] ) : '';
+		$device_label     = isset( $params['device_label'] ) ? sanitize_text_field( $params['device_label'] ) : 'Manual Desk';
 
 		$tickets_table = $wpdb->prefix . 'tarbwy_tickets';
 		$guests_table  = $wpdb->prefix . 'tarbwy_guests';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$record = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT t.id AS ticket_id, g.event_id, g.id AS guest_id, t.ticket_reference, t.status AS ticket_status,
-				        g.full_name, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
-				        p.full_name AS parent_name
-				 FROM {$guests_table} g
-				 LEFT JOIN {$tickets_table} t ON g.id = t.guest_id AND t.status IN ('active', 'used')
-				 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
-				 WHERE g.id = %d LIMIT 1",
-				$guest_id
-			)
-		);
+		if ( $guest_id > 0 ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$record = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT t.id AS ticket_id, g.event_id, g.id AS guest_id, t.ticket_reference, t.qr_payload, t.status AS ticket_status,
+					        g.full_name, g.email, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
+					        p.full_name AS parent_name, p.email AS parent_email
+					 FROM {$guests_table} g
+					 LEFT JOIN {$tickets_table} t ON g.id = t.guest_id AND t.status IN ('active', 'used')
+					 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
+					 WHERE g.id = %d
+					 ORDER BY CASE WHEN t.status = 'active' THEN 0 ELSE 1 END ASC, t.id DESC
+					 LIMIT 1",
+					$guest_id
+				)
+			);
+		} elseif ( ! empty( $ticket_reference ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$record = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT t.id AS ticket_id, g.event_id, g.id AS guest_id, t.ticket_reference, t.qr_payload, t.status AS ticket_status,
+					        g.full_name, g.email, g.guest_type, g.organization, g.rsvp_status, g.checkin_status, g.checked_in_at,
+					        p.full_name AS parent_name, p.email AS parent_email
+					 FROM {$tickets_table} t
+					 INNER JOIN {$guests_table} g ON t.guest_id = g.id AND t.event_id = g.event_id
+					 LEFT JOIN {$guests_table} p ON g.parent_guest_id = p.id
+					 WHERE UPPER(t.ticket_reference) = %s OR UPPER(t.qr_payload) = %s LIMIT 1",
+					strtoupper( $ticket_reference ),
+					strtoupper( $ticket_reference )
+				)
+			);
+		} else {
+			$record = null;
+		}
+
+		// Auto-issue active ticket if guest is confirmed in DB but didn't have a ticket row yet
+		if ( $record && 'confirmed' === $record->rsvp_status && empty( $record->ticket_id ) ) {
+			$issued = QRGenerator::issue_ticket_for_guest( (int) $record->event_id, (int) $record->guest_id, false );
+			if ( ! is_wp_error( $issued ) ) {
+				$record->ticket_id        = (int) $issued['ticket_id'];
+				$record->ticket_reference = (string) $issued['ticket_reference'];
+				$record->ticket_status    = 'active';
+			}
+		}
 
 		if ( ! $record ) {
 			return new WP_REST_Response(
@@ -1043,6 +1321,23 @@ class RestAPI {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( 'COMMIT' );
+
+		// Trigger Check-in Confirmation Email (Idempotent: sent once per guest check-in)
+		$checkin_email = ! empty( $record->email ) ? $record->email : ( $record->parent_email ?? '' );
+		if ( ! empty( $checkin_email ) ) {
+			EmailManager::enqueue_email(
+				(int) $record->event_id,
+				(int) $record->guest_id,
+				'checkin_confirmation',
+				$checkin_email,
+				array(
+					'guest_name'       => $record->full_name,
+					'ticket_reference' => $record->ticket_reference,
+					'checkin_time'     => $now,
+				),
+				false
+			);
+		}
 
 		Security::log_activity(
 			(int) $record->event_id,
@@ -1226,7 +1521,7 @@ class RestAPI {
 			? array_map( 'absint', $params['approved_companion_ids'] )
 			: null;
 
-		if ( ! in_array( $decision, array( 'approved', 'waitlist', 'declined', 'cancelled' ), true ) ) {
+		if ( ! in_array( $decision, array( 'pending', 'approved', 'waitlist', 'declined', 'cancelled' ), true ) ) {
 			return new WP_REST_Response( array( 'message' => 'حالة المراجعة غير صالحة.' ), 422 );
 		}
 
@@ -1244,52 +1539,84 @@ class RestAPI {
 			return new WP_REST_Response( array( 'message' => 'الحدث المرتبط بهذا الطلب غير موجود.' ), 404 );
 		}
 
-		// Fetch all guests in this registration group
+		$primary_gid_lookup = (int) $reg->primary_guest_id;
+
+		// Fetch all guests in this registration group (auto-heal if needed)
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$group_guests = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$guests_table} WHERE registration_id = %d AND event_id = %d ORDER BY id ASC",
+				"SELECT * FROM {$guests_table} WHERE event_id = %d AND (registration_id = %d OR (%d > 0 AND (id = %d OR parent_guest_id = %d))) ORDER BY CASE WHEN parent_guest_id IS NULL OR parent_guest_id = 0 THEN 0 ELSE 1 END ASC, id ASC",
+				(int) $event->id,
 				$reg_id,
-				(int) $event->id
+				$primary_gid_lookup,
+				$primary_gid_lookup,
+				$primary_gid_lookup
 			)
 		);
+		if ( empty( $group_guests ) ) {
+			Installer::heal_orphaned_registrations();
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$reg                = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$reg_table} WHERE id = %d", $reg_id ) );
+			$primary_gid_lookup = $reg ? (int) $reg->primary_guest_id : 0;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$group_guests = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM {$guests_table} WHERE event_id = %d AND (registration_id = %d OR (%d > 0 AND (id = %d OR parent_guest_id = %d))) ORDER BY CASE WHEN parent_guest_id IS NULL OR parent_guest_id = 0 THEN 0 ELSE 1 END ASC, id ASC",
+					(int) $event->id,
+					$reg_id,
+					$primary_gid_lookup,
+					$primary_gid_lookup,
+					$primary_gid_lookup
+				)
+			);
+		}
 
-		$now          = current_time( 'mysql' );
-		$reviewer_id  = get_current_user_id();
-		$auto_confirm = (bool) $event->approval_auto_confirms;
+		$now         = current_time( 'mysql' );
+		$reviewer_id = get_current_user_id();
+		$prev_status = (string) $reg->review_status;
 
-		// Update Registration review_status
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
-			$reg_table,
-			array(
-				'review_status' => $decision,
-				'reviewed_by'   => $reviewer_id ? $reviewer_id : null,
-				'reviewed_at'   => $now,
-				'review_note'   => $review_note,
-				'updated_at'    => $now,
-			),
-			array( 'id' => $reg_id ),
-			array( '%s', '%d', '%s', '%s', '%s' ),
-			array( '%d' )
+		$wpdb->query( 'START TRANSACTION' );
+
+		// Update Registration review_status and previous_status
+		$upd_data    = array(
+			'review_status'   => $decision,
+			'previous_status' => $prev_status,
+			'reviewed_by'     => $reviewer_id ? $reviewer_id : null,
+			'reviewed_at'     => $now,
+			'review_note'     => $review_note,
+			'updated_at'      => $now,
 		);
+		$upd_formats = array( '%s', '%s', '%d', '%s', '%s', '%s' );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$updated_ok = $wpdb->update( $reg_table, $upd_data, array( 'id' => $reg_id ), $upd_formats, array( '%d' ) );
+		if ( false === $updated_ok ) {
+			unset( $upd_data['previous_status'] );
+			$upd_formats = array( '%s', '%d', '%s', '%s', '%s' );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->update( $reg_table, $upd_data, array( 'id' => $reg_id ), $upd_formats, array( '%d' ) );
+		}
 
 		$primary_guest  = null;
 		$issued_tickets = array();
 
 		foreach ( $group_guests as $g ) {
-			if ( null === $g->parent_guest_id ) {
+			if ( empty( $g->parent_guest_id ) ) {
 				$primary_guest = $g;
+				break;
 			}
+		}
+		if ( ! $primary_guest && ! empty( $group_guests ) ) {
+			$primary_guest = $group_guests[0];
 		}
 
 		if ( 'approved' === $decision ) {
 			foreach ( $group_guests as $g ) {
-				$is_companion = null !== $g->parent_guest_id;
+				$is_companion = ! empty( $g->parent_guest_id );
 
 				// Support partial companion approval per Spec Section 5 & 15.5
 				if ( $is_companion && is_array( $approved_companions ) && ! in_array( (int) $g->id, $approved_companions, true ) ) {
-					// Companion excluded by admin
+					// Companion excluded by admin: decline & revoke any active ticket
 					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 					$wpdb->update(
 						$guests_table,
@@ -1298,10 +1625,94 @@ class RestAPI {
 						array( '%s', '%s' ),
 						array( '%d' )
 					);
+					QRGenerator::revoke_tickets_for_guest( (int) $event->id, (int) $g->id, 'companion_excluded' );
 					continue;
 				}
 
-				$new_rsvp = $auto_confirm ? 'confirmed' : 'pending_response';
+				// Always confirm approved guests and ensure registration_id is linked
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->update(
+					$guests_table,
+					array(
+						'registration_id' => $reg_id,
+						'rsvp_status'     => 'confirmed',
+						'updated_at'      => $now,
+					),
+					array( 'id' => (int) $g->id ),
+					array( '%d', '%s', '%s' ),
+					array( '%d' )
+				);
+
+				// Idempotent: reuses existing active ticket if already issued, preventing duplicates
+				$tkt = QRGenerator::issue_ticket_for_guest( (int) $event->id, (int) $g->id, false );
+				if ( ! is_wp_error( $tkt ) ) {
+					$tkt_url      = QRGenerator::get_ticket_url( $tkt['raw_token'] );
+					$holder_label = $is_companion && $primary_guest
+						? $g->full_name . ' (مرافق: ' . $primary_guest->full_name . ')'
+						: $g->full_name;
+
+					$issued_tickets[] = array(
+						'guest_id'         => (int) $g->id,
+						'guest_name'       => $holder_label,
+						'guest_type'       => $is_companion ? 'companion' : 'public',
+						'ticket_reference' => $tkt['ticket_reference'],
+						'qr_payload'       => $tkt['qr_payload'],
+						'ticket_url'       => $tkt_url,
+						'qr_token'         => $tkt['qr_payload'],
+						'raw_token'        => $tkt['raw_token'],
+					);
+
+					// If companion has their own distinct email address, send their individual pass too
+					if ( $is_companion && ! empty( $g->email ) && $primary_guest && strtolower( $g->email ) !== strtolower( $primary_guest->email ) ) {
+						EmailManager::enqueue_email(
+							(int) $event->id,
+							(int) $g->id,
+							'ticket_issued',
+							$g->email,
+							array(
+								'guest_name'       => $holder_label,
+								'event_title'      => $event->title,
+								'venue_name'       => $event->venue_name,
+								'ticket_reference' => $tkt['ticket_reference'],
+								'qr_payload'       => $tkt['qr_payload'],
+								'ticket_url'       => $tkt_url,
+							),
+							true
+						);
+					}
+				}
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( 'COMMIT' );
+
+			// Send primary confirmation email containing ALL generated QR passes (Main Attendee + Approved Companions)
+			if ( $primary_guest && ! empty( $primary_guest->email ) && ! empty( $issued_tickets ) ) {
+				EmailManager::enqueue_email(
+					(int) $event->id,
+					(int) $primary_guest->id,
+					'registration_approved',
+					$primary_guest->email,
+					array(
+						'guest_name'       => $primary_guest->full_name,
+						'event_title'      => $event->title,
+						'venue_name'       => $event->venue_name,
+						'reference_code'   => $reg->reference_code,
+						'ticket_reference' => $issued_tickets[0]['ticket_reference'],
+						'qr_payload'       => $issued_tickets[0]['qr_payload'],
+						'ticket_url'       => $issued_tickets[0]['ticket_url'],
+						'tickets_count'    => (string) count( $issued_tickets ),
+						'all_tickets'      => $issued_tickets,
+					),
+					true
+				);
+			}
+		} else {
+			// Status changed to waitlist, declined, cancelled, or pending: immediately revoke any active QR codes!
+			QRGenerator::revoke_tickets_for_registration( (int) $event->id, $reg_id, 'status_changed_to_' . $decision );
+
+			$new_rsvp = in_array( $decision, array( 'declined', 'cancelled' ), true ) ? 'declined' : 'not_invited';
+			foreach ( $group_guests as $g ) {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$wpdb->update(
 					$guests_table,
@@ -1310,77 +1721,39 @@ class RestAPI {
 					array( '%s', '%s' ),
 					array( '%d' )
 				);
+			}
 
-				if ( $auto_confirm ) {
-					$tkt = QRGenerator::issue_ticket_for_guest( (int) $event->id, (int) $g->id );
-					if ( ! is_wp_error( $tkt ) ) {
-						$tkt_url          = QRGenerator::get_ticket_url( $tkt['raw_token'] );
-						$issued_tickets[] = array(
-							'guest_id'         => (int) $g->id,
-							'guest_name'       => $g->full_name,
-							'ticket_reference' => $tkt['ticket_reference'],
-							'ticket_url'       => $tkt_url,
-						);
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( 'COMMIT' );
 
-						$target_email = ! empty( $g->email ) ? $g->email : ( $primary_guest ? $primary_guest->email : '' );
-						$holder_label = $is_companion && $primary_guest
-							? $g->full_name . ' (مرافق: ' . $primary_guest->full_name . ')'
-							: $g->full_name;
-
-						EmailManager::enqueue_email(
-							(int) $event->id,
-							(int) $g->id,
-							'registration_approved',
-							$target_email,
-							array(
-								'guest_name'       => $holder_label,
-								'event_title'      => $event->title,
-								'venue_name'       => $event->venue_name,
-								'ticket_reference' => $tkt['ticket_reference'],
-								'ticket_url'       => $tkt_url,
-							),
-							true
-						);
-					}
+			if ( $primary_guest && ! empty( $primary_guest->email ) ) {
+				if ( 'waitlist' === $decision ) {
+					EmailManager::enqueue_email(
+						(int) $event->id,
+						(int) $primary_guest->id,
+						'registration_waitlist',
+						$primary_guest->email,
+						array(
+							'guest_name'     => $primary_guest->full_name,
+							'event_title'    => $event->title,
+							'reference_code' => $reg->reference_code,
+						),
+						true
+					);
+				} elseif ( in_array( $decision, array( 'declined', 'cancelled' ), true ) ) {
+					EmailManager::enqueue_email(
+						(int) $event->id,
+						(int) $primary_guest->id,
+						'registration_declined',
+						$primary_guest->email,
+						array(
+							'guest_name'     => $primary_guest->full_name,
+							'event_title'    => $event->title,
+							'reference_code' => $reg->reference_code,
+						),
+						true
+					);
 				}
-			}
-		} elseif ( 'waitlist' === $decision && $primary_guest ) {
-			EmailManager::enqueue_email(
-				(int) $event->id,
-				(int) $primary_guest->id,
-				'registration_waitlist',
-				$primary_guest->email,
-				array(
-					'guest_name'     => $primary_guest->full_name,
-					'event_title'    => $event->title,
-					'reference_code' => $reg->reference_code,
-				),
-				true
-			);
-		} elseif ( in_array( $decision, array( 'declined', 'cancelled' ), true ) ) {
-			foreach ( $group_guests as $g ) {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-				$wpdb->update(
-					$guests_table,
-					array( 'rsvp_status' => 'declined', 'updated_at' => $now ),
-					array( 'id' => (int) $g->id ),
-					array( '%s', '%s' ),
-					array( '%d' )
-				);
-			}
-			if ( $primary_guest ) {
-				EmailManager::enqueue_email(
-					(int) $event->id,
-					(int) $primary_guest->id,
-					'registration_declined',
-					$primary_guest->email,
-					array(
-						'guest_name'     => $primary_guest->full_name,
-						'event_title'    => $event->title,
-						'reference_code' => $reg->reference_code,
-					),
-					true
-				);
 			}
 		}
 
@@ -1390,14 +1763,16 @@ class RestAPI {
 			'registration',
 			$reg_id,
 			array(
-				'decision'       => $decision,
-				'tickets_issued' => count( $issued_tickets ),
+				'previous_status' => $prev_status,
+				'decision'        => $decision,
+				'tickets_issued'  => count( $issued_tickets ),
 			)
 		);
 
 		return new WP_REST_Response(
 			array(
 				'registration_id' => $reg_id,
+				'previous_status' => $prev_status,
 				'review_status'   => $decision,
 				'issued_tickets'  => $issued_tickets,
 				'message'         => 'تم تحديث حالة الطلب وإرسال الإشعارات بنجاح.',
@@ -1421,7 +1796,7 @@ class RestAPI {
 		}
 
 		$event = self::get_active_event( (int) $guest->event_id );
-		$res   = QRGenerator::issue_ticket_for_guest( (int) $guest->event_id, $guest_id );
+		$res   = QRGenerator::issue_ticket_for_guest( (int) $guest->event_id, $guest_id, true );
 
 		if ( is_wp_error( $res ) ) {
 			return new WP_REST_Response( array( 'message' => $res->get_error_message() ), 422 );
@@ -1445,6 +1820,7 @@ class RestAPI {
 					'event_title'      => $event->title,
 					'venue_name'       => $event->venue_name,
 					'ticket_reference' => $res['ticket_reference'],
+					'qr_payload'       => $res['qr_payload'],
 					'ticket_url'       => $ticket_url,
 				),
 				true
@@ -1455,6 +1831,8 @@ class RestAPI {
 			array(
 				'ticket_id'        => $res['ticket_id'],
 				'ticket_reference' => $res['ticket_reference'],
+				'qr_payload'       => $res['qr_payload'],
+				'qr_token'         => $res['qr_payload'],
 				'ticket_url'       => $ticket_url,
 				'message'          => 'تم إبطال التذكرة السابقة وإصدار تذكرة جديدة برمز QR جديد بنجاح.',
 			),

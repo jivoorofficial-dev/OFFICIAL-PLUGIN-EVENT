@@ -56,6 +56,56 @@ class Security {
 	}
 
 	/**
+	 * Derive a standalone, human-friendly Personal Invitation Code (e.g., VIP-8F4A-2C91)
+	 * from a guest's unique raw invitation token or hash.
+	 *
+	 * @param string $token_or_hash Raw token or token hash.
+	 * @return string Standalone Personal Invitation Code (e.g. VIP-XXXX-XXXX).
+	 */
+	public static function format_vip_personal_code( $token_or_hash ) {
+		$clean = strtoupper( preg_replace( '/[^A-Fa-f0-9]/', '', (string) $token_or_hash ) );
+		if ( strlen( $clean ) < 8 ) {
+			$clean = strtoupper( substr( md5( (string) $token_or_hash ), 0, 8 ) );
+		}
+		return sprintf( 'VIP-%s-%s', substr( $clean, 0, 4 ), substr( $clean, 4, 4 ) );
+	}
+
+	/**
+	 * Extract normalized VIP code or raw token from user input (handles VIP-XXXX-XXXX, raw 48-char token, or full pasted URL).
+	 *
+	 * @param string $input Raw user input from /launch/vip or API.
+	 * @return array { 'raw_input' => string, 'clean_hex' => string, 'is_short_code' => bool, 'formatted_code' => string }
+	 */
+	public static function parse_vip_code_input( $input ) {
+		$str = trim( (string) $input );
+
+		// If the user pasted a full URL (e.g. https://tarbwy.org/launch/vip/?token=...), extract query param
+		if ( false !== strpos( $str, 'http' ) || false !== strpos( $str, '?' ) || false !== strpos( $str, 'token=' ) || false !== strpos( $str, 'code=' ) ) {
+			$parsed = wp_parse_url( $str );
+			if ( ! empty( $parsed['query'] ) ) {
+				parse_str( $parsed['query'], $q_vars );
+				if ( ! empty( $q_vars['token'] ) ) {
+					$str = trim( (string) $q_vars['token'] );
+				} elseif ( ! empty( $q_vars['code'] ) ) {
+					$str = trim( (string) $q_vars['code'] );
+				}
+			}
+		}
+
+		// Strip optional "VIP-" prefix and hyphens/spaces
+		$without_prefix = preg_replace( '/^VIP[\-\s_]*/i', '', $str );
+		$clean_hex      = strtolower( preg_replace( '/[^a-fA-F0-9]/', '', (string) $without_prefix ) );
+
+		$is_short = ( strlen( $clean_hex ) >= 6 && strlen( $clean_hex ) <= 16 );
+		return array(
+			'raw_input'      => $str,
+			'clean_hex'      => $clean_hex,
+			'is_short_code'  => $is_short,
+			'formatted_code' => strlen( $clean_hex ) >= 8 ? self::format_vip_personal_code( $clean_hex ) : strtoupper( $str ),
+		);
+	}
+
+	/**
 	 * IP-based and Endpoint-based Rate Limiter using WordPress Transients
 	 *
 	 * @param string $action_key Action identifier (e.g. 'public_reg', 'vip_lookup').
@@ -167,6 +217,8 @@ class Security {
 			header( 'Referrer-Policy: no-referrer' );
 			header( 'X-Content-Type-Options: nosniff' );
 			header( 'X-Frame-Options: SAMEORIGIN' );
+			header( 'Permissions-Policy: camera=(self), microphone=()' );
+			header( "Feature-Policy: camera 'self'; microphone 'none'" );
 			header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
 			header( 'Pragma: no-cache' );
 		}

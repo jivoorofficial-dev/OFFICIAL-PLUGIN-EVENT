@@ -32,25 +32,30 @@ class Plugin {
 	 * Initialize hooks
 	 */
 	public function init() {
-		Installer::maybe_upgrade();
+		try {
+			// Run upgrade/migration on init hook where WP core, $wpdb, $wp_roles, and $wp_rewrite are fully initialized
+			add_action( 'init', array( Installer::class, 'maybe_upgrade' ), 5 );
 
-		// Register custom 5-minute cron schedule
-		add_filter( 'cron_schedules', array( $this, 'register_cron_schedules' ) );
+			// Register custom 5-minute cron schedule
+			add_filter( 'cron_schedules', array( $this, 'register_cron_schedules' ) );
 
-		// Register REST API routes
-		add_action( 'rest_api_init', array( RestAPI::class, 'register_routes' ) );
+			// Register REST API routes
+			add_action( 'rest_api_init', array( RestAPI::class, 'register_routes' ) );
 
-		// Initialize Frontend Routes & Shortcodes
-		FrontendRouter::init();
+			// Initialize Frontend Routes & Shortcodes
+			FrontendRouter::init();
 
-		// Initialize Admin Dashboard
-		if ( is_admin() ) {
-			AdminDashboard::init();
+			// Initialize Admin Dashboard
+			if ( is_admin() ) {
+				AdminDashboard::init();
+			}
+
+			// Cron Hooks for Email Queue & Event Reminders
+			add_action( 'tarbwy_em_process_email_queue', array( EmailManager::class, 'process_queue_batch' ) );
+			add_action( 'tarbwy_em_send_event_reminders', array( $this, 'process_scheduled_reminders' ) );
+		} catch ( \Throwable $e ) {
+			error_log( 'Tarbwy Event Manager initialization notice: ' . $e->getMessage() );
 		}
-
-		// Cron Hooks for Email Queue & Event Reminders
-		add_action( 'tarbwy_em_process_email_queue', array( EmailManager::class, 'process_queue_batch' ) );
-		add_action( 'tarbwy_em_send_event_reminders', array( $this, 'process_scheduled_reminders' ) );
 	}
 
 	/**

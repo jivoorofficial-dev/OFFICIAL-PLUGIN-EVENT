@@ -1,18 +1,27 @@
 /**
  * Tarbwy Event Manager — Institutional RTL Stylesheet (tarbwy-public.css)
- * Zero external CDN dependencies. Designed for Arabic RTL legibility, mobile-first forms,
- * high-contrast Check-in controls, and clean printable tickets.
+ *
+ * Designed for the official launch ceremony of:
+ * «تربوي — الاتحاد العربي للقيادة التربوية» (tarbwy.org/launch)
+ *
+ * Features:
+ * - Zero external CDN runtime dependencies.
+ * - Full Arabic RTL typographic hierarchy, balanced headlines, and tabular numerals.
+ * - Responsive Mobile-First architecture across 375px (Mobile), 768px (Tablet), and 1440px (Desktop).
+ * - Smooth compositor-only transitions (transform, opacity) with prefers-reduced-motion support.
+ * - Official printable QR ticket and high-contrast Check-in terminal styles.
  */
 
 :root {
 	--tarbwy-bg: #FBF9F5;
 	--tarbwy-surface: #FFFFFF;
-	--tarbwy-surface-alt: #F4EFE6;
-	--tarbwy-border: #E5E0D8;
-	--tarbwy-text: #1C1917;
+	--tarbwy-surface-alt: #F3EFE6;
+	--tarbwy-border: #E2DDD3;
+	--tarbwy-border-strong: #C9C1B4;
+	--tarbwy-text: #171412;
 	--tarbwy-muted: #57534E;
 	--tarbwy-primary: #14532D;
-	--tarbwy-primary-hover: #166534;
+	--tarbwy-primary-hover: #0F3F22;
 	--tarbwy-accent: #9A3412;
 	--tarbwy-success: #15803D;
 	--tarbwy-warning: #B45309;
@@ -23,44 +32,78 @@
 	box-sizing: border-box;
 }
 
+html {
+	scroll-behavior: smooth;
+}
+
 body.tarbwy-public-body {
 	margin: 0;
 	padding: 0;
 	background-color: var(--tarbwy-bg);
 	color: var(--tarbwy-text);
-	font-family: 'Cairo', 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif;
+	font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
 	direction: rtl;
 	text-align: right;
-	line-height: 1.7;
+	line-height: 1.75;
 	-webkit-font-smoothing: antialiased;
 }
 
 .tarbwy-container {
-	max-width: 1140px;
+	max-width: 1180px;
 	margin: 0 auto;
 	padding: 0 20px;
 }
 
-/* Header (Strict 3-zone Top Bar Contract) */
+.tarbwy-mt-16 {
+	margin-top: 16px;
+}
+
+.tarbwy-mt-24 {
+	margin-top: 24px;
+}
+
+.tarbwy-mb-24 {
+	margin-bottom: 24px;
+}
+
+.tarbwy-muted {
+	color: var(--tarbwy-muted);
+}
+
+.tarbwy-body-lg {
+	font-size: 1.08rem;
+	line-height: 1.85;
+	color: var(--tarbwy-text);
+	margin: 0;
+}
+
+/* ==========================================================================
+   HEADER (Strict 3-Zone Top Bar Contract + Mobile Drawer)
+   ========================================================================== */
 .tarbwy-header {
 	background-color: var(--tarbwy-surface);
 	border-bottom: 1px solid var(--tarbwy-border);
 	position: sticky;
 	top: 0;
-	z-index: 40;
+	z-index: 50;
 }
 
 .tarbwy-header-inner {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 24px;
-	min-height: 68px;
+	gap: 32px;
+	min-height: 70px;
+}
+
+.tarbwy-brand-link {
+	text-decoration: none;
+	flex-shrink: 0;
 }
 
 .tarbwy-brand-title {
 	font-weight: 800;
-	font-size: 1.05rem;
+	font-size: 1.06rem;
 	color: var(--tarbwy-primary);
 	white-space: nowrap;
 }
@@ -77,60 +120,101 @@ body.tarbwy-public-body {
 	font-size: 0.92rem;
 	font-weight: 600;
 	white-space: nowrap;
+	transition: color 0.16s ease;
 }
 
 .tarbwy-nav a:hover {
 	color: var(--tarbwy-primary);
 	text-decoration: underline;
+	text-underline-offset: 6px;
 }
 
-/* Hero */
+.tarbwy-header-cta {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+.tarbwy-mobile-toggle {
+	display: none;
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border-strong);
+	color: var(--tarbwy-text);
+	padding: 8px 14px;
+	min-height: 44px;
+	font-family: inherit;
+	font-size: 0.88rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.tarbwy-mobile-drawer {
+	background: var(--tarbwy-surface);
+	border-top: 1px solid var(--tarbwy-border);
+	border-bottom: 1px solid var(--tarbwy-border);
+	padding: 16px 0;
+}
+
+.tarbwy-mobile-drawer-links {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.tarbwy-mobile-nav-link {
+	padding: 10px 12px;
+	color: var(--tarbwy-text);
+	text-decoration: none;
+	font-weight: 700;
+	border-bottom: 1px solid var(--tarbwy-surface-alt);
+}
+
+/* ==========================================================================
+   1. HERO SECTION & GUEST JOURNEY STRIP
+   ========================================================================== */
 .tarbwy-hero {
-	padding: 72px 0 64px;
-	background: linear-gradient(180deg, #F4EFE6 0%, #FBF9F5 100%);
+	padding: 64px 0 56px;
+	background: linear-gradient(180deg, #F3EFE6 0%, #FBF9F5 100%);
 	border-bottom: 1px solid var(--tarbwy-border);
 }
 
+.tarbwy-hero-grid {
+	display: grid;
+	grid-template-columns: 1.55fr 1fr;
+	gap: 32px;
+	align-items: stretch;
+	margin-bottom: 32px;
+}
+
+.tarbwy-hero-main {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
 .tarbwy-kicker {
-	font-size: 0.85rem;
+	font-size: 0.84rem;
 	color: var(--tarbwy-accent);
 	font-weight: 700;
 	margin: 0 0 12px;
 }
 
 .tarbwy-hero-title {
-	font-size: clamp(1.85rem, 3.8vw, 3rem);
-	line-height: 1.3;
+	font-size: clamp(2rem, 3.8vw, 3.2rem);
+	line-height: 1.28;
+	font-weight: 800;
 	margin: 0 0 16px;
 	color: var(--tarbwy-text);
+	text-wrap: balance;
 }
 
 .tarbwy-hero-subtitle {
-	font-size: 1.15rem;
+	font-size: 1.12rem;
 	color: var(--tarbwy-muted);
-	max-width: 720px;
-	margin: 0 0 32px;
-}
-
-.tarbwy-hero-meta {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 16px;
-	padding: 20px;
-	background: var(--tarbwy-surface);
-	border: 1px solid var(--tarbwy-border);
-	margin-bottom: 32px;
-}
-
-.tarbwy-meta-label {
-	display: block;
-	font-size: 0.8rem;
-	color: var(--tarbwy-muted);
-}
-
-.tarbwy-meta-value {
-	font-size: 1rem;
-	color: var(--tarbwy-text);
+	max-width: 68ch;
+	margin: 0 0 28px;
+	line-height: 1.8;
 }
 
 .tarbwy-hero-actions {
@@ -139,9 +223,129 @@ body.tarbwy-public-body {
 	gap: 12px;
 }
 
-/* Sections & Cards */
+.tarbwy-hero-emblem-card {
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tarbwy-emblem-inner {
+	text-align: center;
+}
+
+.tarbwy-emblem-svg {
+	width: 124px;
+	height: 124px;
+	margin: 0 auto 16px;
+	display: block;
+}
+
+.tarbwy-emblem-label {
+	display: block;
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: var(--tarbwy-accent);
+	margin-bottom: 4px;
+}
+
+.tarbwy-emblem-org {
+	display: block;
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: var(--tarbwy-primary);
+	margin-bottom: 6px;
+}
+
+.tarbwy-emblem-sub {
+	display: block;
+	font-size: 0.82rem;
+	color: var(--tarbwy-muted);
+	line-height: 1.6;
+}
+
+.tarbwy-hero-meta {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16px;
+	padding: 22px 24px;
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	margin-bottom: 24px;
+}
+
+.tarbwy-meta-label {
+	display: block;
+	font-size: 0.78rem;
+	color: var(--tarbwy-muted);
+	margin-bottom: 4px;
+}
+
+.tarbwy-meta-value {
+	font-size: 0.96rem;
+	font-weight: 700;
+	color: var(--tarbwy-text);
+}
+
+/* 4-Step Digital Guest Journey */
+.tarbwy-journey-strip {
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 24px;
+}
+
+.tarbwy-journey-header {
+	margin-bottom: 18px;
+}
+
+.tarbwy-journey-desc {
+	margin: 4px 0 0;
+	font-size: 0.9rem;
+	color: var(--tarbwy-muted);
+}
+
+.tarbwy-journey-steps {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16px;
+}
+
+.tarbwy-journey-step {
+	padding: 16px;
+	background: var(--tarbwy-bg);
+	border: 1px solid var(--tarbwy-border);
+}
+
+.tarbwy-step-num {
+	display: inline-block;
+	font-family: monospace;
+	font-size: 0.82rem;
+	font-weight: 800;
+	color: var(--tarbwy-accent);
+	margin-bottom: 6px;
+}
+
+.tarbwy-journey-step strong {
+	display: block;
+	font-size: 0.95rem;
+	color: var(--tarbwy-text);
+	margin-bottom: 6px;
+}
+
+.tarbwy-journey-step p {
+	margin: 0;
+	font-size: 0.82rem;
+	color: var(--tarbwy-muted);
+	line-height: 1.65;
+}
+
+/* ==========================================================================
+   SECTIONS, CARDS, SCHEDULE & SPEAKERS
+   ========================================================================== */
 .tarbwy-section {
-	padding: 56px 0;
+	padding: 64px 0;
 }
 
 .tarbwy-section-alt {
@@ -150,23 +354,46 @@ body.tarbwy-public-body {
 	border-bottom: 1px solid var(--tarbwy-border);
 }
 
+.tarbwy-section-header {
+	margin-bottom: 28px;
+}
+
 .tarbwy-section-num {
 	display: block;
-	font-size: 0.82rem;
+	font-size: 0.8rem;
 	font-weight: 700;
 	color: var(--tarbwy-accent);
 	margin-bottom: 6px;
 }
 
+.tarbwy-section-title {
+	font-size: clamp(1.45rem, 2.5vw, 2rem);
+	font-weight: 800;
+	color: var(--tarbwy-text);
+	margin: 0 0 8px;
+}
+
+.tarbwy-editorial-lead {
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 28px 32px;
+	font-size: 1.08rem;
+	line-height: 1.85;
+}
+
+.tarbwy-editorial-lead p {
+	margin: 0;
+}
+
 .tarbwy-grid-2 {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	grid-template-columns: repeat(2, 1fr);
 	gap: 24px;
 }
 
 .tarbwy-grid-3 {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	grid-template-columns: repeat(3, 1fr);
 	gap: 20px;
 }
 
@@ -175,22 +402,159 @@ body.tarbwy-public-body {
 	background: var(--tarbwy-surface);
 	border: 1px solid var(--tarbwy-border);
 	padding: 28px;
+	transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tarbwy-card h3 {
+	margin: 0 0 10px;
+	font-size: 1.12rem;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-card p {
+	margin: 0;
+	font-size: 0.94rem;
+	color: var(--tarbwy-muted);
+}
+
+.tarbwy-inline-cta-bar {
+	margin-top: 28px;
+	padding: 22px 28px;
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border-strong);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	flex-wrap: wrap;
+}
+
+.tarbwy-inline-cta-bar strong {
+	display: block;
+	font-size: 1rem;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-inline-cta-bar span {
+	font-size: 0.88rem;
+	color: var(--tarbwy-muted);
+}
+
+/* Schedule List */
+.tarbwy-schedule-list {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.tarbwy-schedule-row {
+	display: grid;
+	grid-template-columns: 200px 1fr;
+	gap: 24px;
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 22px 26px;
+	align-items: center;
+}
+
+.tarbwy-schedule-time-col {
+	border-left: 1px solid var(--tarbwy-border);
+	padding-left: 16px;
+}
+
+.tarbwy-schedule-index {
+	display: block;
+	font-size: 0.76rem;
+	font-weight: 700;
+	color: var(--tarbwy-accent);
+}
+
+.tarbwy-schedule-time {
+	font-size: 1rem;
+	color: var(--tarbwy-primary);
+	font-variant-numeric: tabular-nums;
+}
+
+.tarbwy-schedule-content h3 {
+	margin: 0 0 6px;
+	font-size: 1.06rem;
+}
+
+.tarbwy-schedule-content p {
+	margin: 0;
+	font-size: 0.9rem;
+	color: var(--tarbwy-muted);
+}
+
+/* Speaker Cards (Photo/Monogram + Name + Short Professional Title Only) */
+.tarbwy-speaker-card {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+
+.tarbwy-speaker-avatar {
+	width: 68px;
+	height: 68px;
+	flex-shrink: 0;
+	background: var(--tarbwy-surface-alt);
+	border: 1px solid var(--tarbwy-border-strong);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.tarbwy-speaker-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.tarbwy-speaker-monogram {
+	font-size: 1.4rem;
+	font-weight: 800;
+	color: var(--tarbwy-primary);
+}
+
+.tarbwy-speaker-name {
+	margin: 0 0 4px !important;
+	font-size: 1.05rem !important;
+}
+
+.tarbwy-speaker-role {
+	margin: 0 !important;
+	font-size: 0.86rem !important;
+	color: var(--tarbwy-muted);
 }
 
 .tarbwy-placeholder-notice {
 	background: var(--tarbwy-surface);
-	border: 1px dashed #C7B299;
-	padding: 24px;
+	border: 1px dashed var(--tarbwy-border-strong);
+	padding: 24px 28px;
 	color: var(--tarbwy-muted);
 }
 
-/* Buttons & Inputs */
+.tarbwy-placeholder-notice strong {
+	display: block;
+	color: var(--tarbwy-text);
+	margin-bottom: 6px;
+}
+
+.tarbwy-placeholder-notice p {
+	margin: 0;
+	font-size: 0.92rem;
+}
+
+/* ==========================================================================
+   BUTTONS, INPUTS & REGISTRATION FORM
+   ========================================================================== */
 .tarbwy-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: 10px 20px;
-	font-size: 0.95rem;
+	padding: 10px 22px;
+	font-size: 0.94rem;
 	font-weight: 700;
 	text-decoration: none;
 	border: 1px solid transparent;
@@ -198,10 +562,11 @@ body.tarbwy-public-body {
 	min-height: 44px;
 	white-space: nowrap;
 	font-family: inherit;
+	transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .tarbwy-btn-lg {
-	padding: 13px 28px;
+	padding: 13px 30px;
 	font-size: 1.02rem;
 }
 
@@ -217,12 +582,24 @@ body.tarbwy-public-body {
 .tarbwy-btn-outline {
 	background-color: var(--tarbwy-surface);
 	color: var(--tarbwy-text);
-	border-color: var(--tarbwy-border);
+	border-color: var(--tarbwy-border-strong);
+}
+
+.tarbwy-btn-outline:hover {
+	border-color: var(--tarbwy-primary);
+	color: var(--tarbwy-primary);
+}
+
+.tarbwy-form-intro {
+	font-size: 0.95rem;
+	color: var(--tarbwy-muted);
+	margin: 0 0 24px;
+	line-height: 1.8;
 }
 
 .tarbwy-form-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	grid-template-columns: repeat(2, 1fr);
 	gap: 18px;
 	margin-top: 20px;
 }
@@ -230,8 +607,13 @@ body.tarbwy-public-body {
 .tarbwy-field label {
 	display: block;
 	font-weight: 700;
-	font-size: 0.9rem;
+	font-size: 0.88rem;
 	margin-bottom: 6px;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-field .req {
+	color: var(--tarbwy-accent);
 }
 
 .tarbwy-field input,
@@ -243,19 +625,41 @@ input[type="tel"],
 input[type="search"] {
 	width: 100%;
 	min-height: 44px;
-	padding: 10px 12px;
-	border: 1px solid #C7C2B8;
+	padding: 10px 14px;
+	border: 1px solid var(--tarbwy-border-strong);
 	background: #FFFFFF;
 	font-family: inherit;
 	font-size: 0.95rem;
+	color: var(--tarbwy-text);
+}
+
+.tarbwy-field input:focus,
+.tarbwy-field select:focus,
+.tarbwy-field textarea:focus {
+	outline: 2px solid var(--tarbwy-primary);
+	outline-offset: 1px;
+	border-color: var(--tarbwy-primary);
+}
+
+.tarbwy-form {
+	position: relative;
+	overflow: hidden;
 }
 
 .tarbwy-hp-field {
-	position: absolute;
-	left: -9999px;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
+	position: absolute !important;
+	inset-inline-start: 0 !important;
+	top: 0 !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip: rect(0, 0, 0, 0) !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+	border: 0 !important;
+	pointer-events: none !important;
 }
 
 .tarbwy-companions-box {
@@ -272,7 +676,93 @@ input[type="search"] {
 	flex-wrap: wrap;
 }
 
-/* Official Printable Ticket */
+.tarbwy-companions-header h3 {
+	margin: 0 0 4px;
+	font-size: 1rem;
+}
+
+.tarbwy-companions-header p {
+	margin: 0;
+	font-size: 0.85rem;
+}
+
+.tarbwy-form-submit {
+	margin-top: 28px;
+}
+
+/* ==========================================================================
+   CONTACT SECTION & FOOTER
+   ========================================================================== */
+.tarbwy-contact-section {
+	padding-top: 16px;
+}
+
+.tarbwy-contact-card {
+	background: var(--tarbwy-surface);
+	border: 1px solid var(--tarbwy-border);
+	padding: 32px;
+	display: grid;
+	grid-template-columns: 1.3fr 1fr;
+	gap: 28px;
+	align-items: center;
+}
+
+.tarbwy-contact-card h2 {
+	margin: 0 0 8px;
+	font-size: 1.4rem;
+}
+
+.tarbwy-contact-channels {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	background: var(--tarbwy-bg);
+	border: 1px solid var(--tarbwy-border);
+	padding: 20px;
+}
+
+.tarbwy-contact-value {
+	font-size: 1.02rem;
+	font-weight: 800;
+	color: var(--tarbwy-primary);
+	text-decoration: none;
+}
+
+.tarbwy-footer {
+	background: var(--tarbwy-surface);
+	border-top: 1px solid var(--tarbwy-border);
+	padding: 32px 0;
+	margin-top: 32px;
+}
+
+.tarbwy-footer-inner {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 20px;
+}
+
+.tarbwy-footer-links {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 0.88rem;
+}
+
+.tarbwy-footer-links a {
+	color: var(--tarbwy-muted);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.tarbwy-footer-links a:hover {
+	color: var(--tarbwy-primary);
+}
+
+/* ==========================================================================
+   OFFICIAL PRINTABLE TICKET & CHECK-IN TERMINAL
+   ========================================================================== */
 .tarbwy-official-ticket {
 	background: #FFFFFF;
 	border: 2px solid var(--tarbwy-primary);
@@ -324,7 +814,6 @@ input[type="search"] {
 	border: 1px solid var(--tarbwy-border);
 }
 
-/* Check-in Interface */
 .tarbwy-stats-ribbon {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
@@ -366,29 +855,961 @@ input[type="search"] {
 	color: #7F1D1D;
 }
 
-.tarbwy-footer {
-	background: var(--tarbwy-surface);
-	border-top: 1px solid var(--tarbwy-border);
-	padding: 32px 0;
-	margin-top: 48px;
+/* ==========================================================================
+   VIP PERSONAL INVITATION CODE & COPY CODE UI (/launch/vip)
+   ========================================================================== */
+.tarbwy-vip-code-pill {
+	display: inline-block;
+	padding: 4px 12px;
+	background: #FFFBEB;
+	color: #9A3412;
+	border: 1px solid #FDE68A;
+	border-radius: 6px;
+	font-size: 0.8rem;
+	font-weight: 800;
 }
 
-.tarbwy-footer-inner {
+.tarbwy-vip-input-group {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+	flex-wrap: wrap;
+}
+
+.tarbwy-vip-code-input {
+	flex: 1;
+	min-width: 200px;
+	font-family: "Courier New", Courier, monospace !important;
+	font-size: 1.2rem !important;
+	font-weight: 800 !important;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	text-align: center;
+	color: var(--tarbwy-primary) !important;
+	background: #FDFBF7 !important;
+	border: 2px solid var(--tarbwy-primary) !important;
+	border-radius: 8px;
+}
+
+.tarbwy-vip-personal-code-banner {
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 	flex-wrap: wrap;
-	gap: 20px;
+	gap: 14px;
+	padding: 16px 20px;
+	background: #FFFBEB;
+	border: 2px dashed #9A3412;
+	border-radius: 10px;
+}
+
+.tarbwy-vip-code-label {
+	display: block;
+	font-size: 0.78rem;
+	font-weight: 700;
+	color: #78350F;
+	margin-bottom: 2px;
+}
+
+.tarbwy-vip-code-value {
+	display: inline-block;
+	font-family: "Courier New", Courier, monospace;
+	font-size: 1.45rem;
+	font-weight: 800;
+	letter-spacing: 2px;
+	color: #14532D;
+	user-select: all;
+	-webkit-user-select: all;
+}
+
+.tarbwy-alert {
+	padding: 14px 18px;
+	border-radius: 8px;
+	border: 1px solid transparent;
+	font-size: 0.94rem;
+	line-height: 1.65;
+}
+
+.tarbwy-alert-success {
+	background: #ECFDF5;
+	border-color: #15803D;
+	color: #14532D;
+}
+
+.tarbwy-alert-warning {
+	background: #FFFBEB;
+	border-color: #B45309;
+	color: #78350F;
+}
+
+.tarbwy-alert-error {
+	background: #FEF2F2;
+	border-color: #B91C1C;
+	color: #7F1D1D;
+}
+
+/* ==========================================================================
+   ANDROID-APP-STYLE CHECK-IN APPLICATION (/launch/checkin)
+   ========================================================================== */
+[hidden] {
+	display: none !important;
+}
+
+body.tarbwy-checkin-app-body {
+	background: #F1F5F9;
+	color: #0F172A;
+	min-height: 100vh;
+}
+
+.tarbwy-checkin-appbar {
+	position: sticky;
+	top: 0;
+	z-index: 120;
+	background: #0F3D22;
+	color: #FFFFFF;
+	box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tarbwy-checkin-appbar-inner {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 12px 18px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	flex-wrap: wrap;
+}
+
+.tarbwy-checkin-brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.tarbwy-checkin-app-icon {
+	width: 42px;
+	height: 42px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.14);
+	border: 1px solid rgba(255, 255, 255, 0.24);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #FDE68A;
+	flex-shrink: 0;
+}
+
+.tarbwy-checkin-app-title {
+	margin: 0;
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: #FFFFFF;
+	line-height: 1.3;
+}
+
+.tarbwy-checkin-app-subtitle {
+	margin: 2px 0 0;
+	font-size: 0.78rem;
+	color: #CBD5E1;
+}
+
+.tarbwy-checkin-appbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.tarbwy-net-badge,
+.tarbwy-checkin-net-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	border-radius: 999px;
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+.tarbwy-net-online,
+.tarbwy-checkin-net-pill.is-online {
+	background: rgba(16, 185, 129, 0.2);
+	color: #A7F3D0;
+	border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.tarbwy-net-offline,
+.tarbwy-checkin-net-pill.is-offline {
+	background: rgba(239, 68, 68, 0.25);
+	color: #FECACA;
+	border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.tarbwy-net-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.tarbwy-appbar-icon-btn {
+	background: rgba(255, 255, 255, 0.12);
+	color: #FFFFFF;
+	border: 1px solid rgba(255, 255, 255, 0.22);
+	border-radius: 8px;
+	padding: 6px 12px;
+	font-size: 0.78rem;
+	font-weight: 700;
+	cursor: pointer;
+	font-family: inherit;
+	min-height: 36px;
+}
+
+.tarbwy-staff-chip {
+	background: rgba(255, 255, 255, 0.1);
+	padding: 5px 10px;
+	border-radius: 8px;
+	font-size: 0.8rem;
+	color: #F8FAFC;
+}
+
+.tarbwy-appbar-logout {
+	background: rgba(239, 68, 68, 0.22);
+	color: #FECACA;
+	border: 1px solid rgba(252, 165, 165, 0.35);
+	padding: 5px 12px;
+	border-radius: 8px;
+	font-size: 0.8rem;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.tarbwy-checkin-main {
+	padding: 16px 14px 48px;
+}
+
+.tarbwy-checkin-shell {
+	max-width: 960px;
+	margin: 0 auto;
+}
+
+/* KPI Progress & 4-Metric Card */
+.tarbwy-checkin-kpi-card {
+	background: #FFFFFF;
+	border: 1px solid #E2E8F0;
+	border-radius: 14px;
+	padding: 18px 20px;
+	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+	margin-bottom: 16px;
+}
+
+.tarbwy-checkin-progress-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 10px;
+}
+
+.tarbwy-kpi-eyebrow {
+	display: block;
+	font-size: 0.76rem;
+	font-weight: 700;
+	color: #64748B;
+}
+
+.tarbwy-kpi-progress-title {
+	font-size: 0.96rem;
+	color: #0F172A;
+}
+
+.tarbwy-kpi-pct {
+	font-size: 1.25rem;
+	font-weight: 800;
+	color: #14532D;
+	font-variant-numeric: tabular-nums;
+}
+
+.tarbwy-icon-pill-btn {
+	background: #F8FAFC;
+	border: 1px solid #CBD5E1;
+	color: #334155;
+	padding: 5px 12px;
+	border-radius: 8px;
+	font-size: 0.8rem;
+	font-weight: 700;
+	cursor: pointer;
+	font-family: inherit;
+}
+
+.tarbwy-checkin-progress-track {
+	height: 10px;
+	background: #E2E8F0;
+	border-radius: 999px;
+	overflow: hidden;
+	margin-bottom: 16px;
+}
+
+.tarbwy-checkin-progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #15803D 0%, #0F3D22 100%);
+	border-radius: 999px;
+	transition: width 0.35s ease;
+}
+
+.tarbwy-checkin-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
+
+.tarbwy-kpi-box {
+	background: #F8FAFC;
+	border: 1px solid #E2E8F0;
+	border-radius: 10px;
+	padding: 12px 14px;
+}
+
+.tarbwy-kpi-box-success {
+	background: #F0FDF4;
+	border-color: #BBF7D0;
+}
+
+.tarbwy-kpi-box-accent {
+	background: #FFFBEB;
+	border-color: #FDE68A;
+}
+
+.tarbwy-kpi-label {
+	display: block;
+	font-size: 0.76rem;
+	font-weight: 700;
+	color: #475569;
+	margin-bottom: 4px;
+}
+
+.tarbwy-kpi-value {
+	display: block;
+	font-size: 1.55rem;
+	font-weight: 800;
+	color: #0F172A;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+}
+
+.tarbwy-kpi-box-success .tarbwy-kpi-value {
+	color: #15803D;
+}
+
+.tarbwy-kpi-box-accent .tarbwy-kpi-value {
+	color: #B45309;
+}
+
+/* Server Verification Result Sheet / Toast */
+.tarbwy-checkin-result-sheet,
+.tarbwy-checkin-result-toast {
+	border-radius: 14px;
+	padding: 18px 20px;
+	margin-bottom: 16px;
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+	animation: tarbwySlideIn 0.22s ease-out;
+	border: 2px solid #CBD5E1;
+	background: #FFFFFF;
+}
+
+.tarbwy-banner-valid {
+	background: #ECFDF5;
+	border-color: #15803D;
+	color: #14532D;
+}
+
+.tarbwy-banner-duplicate {
+	background: #FFFBEB;
+	border-color: #D97706;
+	color: #78350F;
+}
+
+.tarbwy-banner-error {
+	background: #FEF2F2;
+	border-color: #DC2626;
+	color: #7F1D1D;
+}
+
+.tarbwy-checkin-toast-head {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+}
+
+.tarbwy-checkin-toast-icon {
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 900;
+	font-size: 1.1rem;
+	background: rgba(15, 23, 42, 0.08);
+	flex-shrink: 0;
+}
+
+.tarbwy-checkin-toast-title {
+	font-size: 1.02rem;
+	font-weight: 800;
+	margin-bottom: 6px;
+}
+
+.tarbwy-checkin-toast-guest {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	font-size: 0.85rem;
+}
+
+.tarbwy-checkin-toast-close {
+	background: rgba(255, 255, 255, 0.75);
+	border: 1px solid rgba(15, 23, 42, 0.15);
+	border-radius: 8px;
+	width: 32px;
+	height: 32px;
+	cursor: pointer;
+	font-weight: 800;
+}
+
+@keyframes tarbwySlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.tarbwy-checkin-panel {
+	background: #FFFFFF;
+	border: 1px solid #E2E8F0;
+	border-radius: 14px;
+	padding: 20px;
+	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.tarbwy-checkin-scanner-top {
+	border: 2px solid #0F3D22;
+	box-shadow: 0 6px 20px rgba(15, 61, 34, 0.08);
+}
+
+.tarbwy-panel-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.tarbwy-panel-badge {
+	display: inline-block;
+	font-size: 0.74rem;
+	font-weight: 800;
+	color: #9A3412;
+	margin-bottom: 2px;
+}
+
+.tarbwy-panel-title {
+	margin: 0;
+	font-size: 1.12rem;
+	font-weight: 800;
+	color: #0F172A;
+}
+
+.tarbwy-camera-pill {
+	display: inline-block;
+	background: #F1F5F9;
+	color: #334155;
+	border: 1px solid #CBD5E1;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 0.76rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.tarbwy-camera-pill.is-live,
+.tarbwy-camera-pill.is-active {
+	background: #ECFDF5;
+	color: #15803D;
+	border-color: #86EFAC;
+}
+
+/* Camera Viewfinder & Laser Reticle */
+.tarbwy-camera-viewport {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	max-height: 380px;
+	background: #090D16;
+	border-radius: 12px;
+	overflow: hidden;
+	margin-bottom: 14px;
+	border: 2px solid #15803D;
+}
+
+.tarbwy-camera-viewport video {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.tarbwy-scanner-reticle {
+	position: absolute;
+	inset: 16%;
+	pointer-events: none;
+}
+
+.tarbwy-corner {
+	position: absolute;
+	width: 26px;
+	height: 26px;
+	border-color: #22C55E;
+	border-style: solid;
+	border-width: 0;
+}
+
+.tarbwy-corner.tl {
+	top: 0;
+	left: 0;
+	border-top-width: 4px;
+	border-left-width: 4px;
+	border-top-left-radius: 8px;
+}
+
+.tarbwy-corner.tr {
+	top: 0;
+	right: 0;
+	border-top-width: 4px;
+	border-right-width: 4px;
+	border-top-right-radius: 8px;
+}
+
+.tarbwy-corner.bl {
+	bottom: 0;
+	left: 0;
+	border-bottom-width: 4px;
+	border-left-width: 4px;
+	border-bottom-left-radius: 8px;
+}
+
+.tarbwy-corner.br {
+	bottom: 0;
+	right: 0;
+	border-bottom-width: 4px;
+	border-right-width: 4px;
+	border-bottom-right-radius: 8px;
+}
+
+.tarbwy-laser-line {
+	position: absolute;
+	left: 6%;
+	right: 6%;
+	height: 2px;
+	background: linear-gradient(90deg, transparent, #22C55E, #86EFAC, #22C55E, transparent);
+	box-shadow: 0 0 10px #22C55E;
+	animation: tarbwyLaserScan 2.2s infinite ease-in-out;
+}
+
+@keyframes tarbwyLaserScan {
+	0% { top: 8%; }
+	50% { top: 90%; }
+	100% { top: 8%; }
+}
+
+.tarbwy-camera-overlay-bar {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 10px 12px;
+	background: linear-gradient(to top, rgba(9, 13, 22, 0.88), rgba(9, 13, 22, 0));
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.tarbwy-camera-hint {
+	color: #F8FAFC;
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+.tarbwy-camera-floating-btns {
+	display: flex;
+	gap: 6px;
+}
+
+.tarbwy-cam-ctrl-btn {
+	background: rgba(255, 255, 255, 0.18);
+	color: #FFFFFF;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	padding: 5px 10px;
+	border-radius: 8px;
+	font-size: 0.76rem;
+	font-weight: 700;
+	cursor: pointer;
+	font-family: inherit;
+	backdrop-filter: blur(4px);
+}
+
+.tarbwy-scanner-actions {
+	display: grid;
+	grid-template-columns: 1.3fr 1fr;
+	gap: 10px;
+}
+
+.tarbwy-btn-scanner-main,
+.tarbwy-btn-scanner-alt {
+	border-radius: 10px;
+	min-height: 48px;
+	font-size: 0.94rem;
+}
+
+.tarbwy-btn-scanner-main.is-danger {
+	background: #B91C1C !important;
+	border-color: #991B1B !important;
+	color: #FFFFFF !important;
+}
+
+.tarbwy-direct-scan-box {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid #E2E8F0;
+}
+
+.tarbwy-direct-scan-label {
+	display: block;
+	font-size: 0.84rem;
+	font-weight: 700;
+	color: #334155;
+	margin-bottom: 8px;
+}
+
+.tarbwy-direct-scan-row {
+	display: flex;
+	gap: 8px;
+}
+
+.tarbwy-direct-scan-row input {
+	flex: 1;
+	border-radius: 10px;
+	font-family: monospace;
+}
+
+.tarbwy-direct-scan-row button {
+	border-radius: 10px;
+}
+
+/* Manual Attendee Search & Filter Chips */
+.tarbwy-search-bar-wrap {
+	position: relative;
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.tarbwy-checkin-search-input {
+	flex: 1;
+	border-radius: 10px !important;
+	padding-left: 36px !important;
+	border: 2px solid #CBD5E1 !important;
+	font-size: 0.96rem !important;
+}
+
+.tarbwy-checkin-search-input:focus {
+	border-color: #14532D !important;
+	outline: none !important;
+}
+
+.tarbwy-search-clear-btn {
+	position: absolute;
+	left: 92px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: #E2E8F0;
+	border: none;
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	font-size: 0.8rem;
+	color: #475569;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tarbwy-quick-filter-chips {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 12px 0 14px;
+}
+
+.tarbwy-filter-chip {
+	background: #F8FAFC;
+	border: 1px solid #CBD5E1;
+	color: #475569;
+	padding: 6px 12px;
+	border-radius: 999px;
+	font-size: 0.8rem;
+	font-weight: 700;
+	cursor: pointer;
+	font-family: inherit;
+	transition: all 0.15s ease;
+}
+
+.tarbwy-filter-chip:hover {
+	border-color: #14532D;
+	color: #14532D;
+}
+
+.tarbwy-filter-chip.is-active {
+	background: #0F3D22;
+	border-color: #0F3D22;
+	color: #FFFFFF;
+}
+
+.tarbwy-checkin-results-list {
+	max-height: 440px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.tarbwy-checkin-empty-state {
+	padding: 28px 16px;
+	text-align: center;
+	background: #F8FAFC;
+	border: 1px dashed #CBD5E1;
+	border-radius: 10px;
+	color: #64748B;
+	font-size: 0.9rem;
+}
+
+.tarbwy-attendee-item,
+.tarbwy-checkin-attendee-card {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
+	background: #F8FAFC;
+	border: 1px solid #E2E8F0;
+	border-radius: 12px;
+	transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tarbwy-attendee-item:hover,
+.tarbwy-checkin-attendee-card:hover {
+	border-color: #94A3B8;
+	background: #FFFFFF;
+}
+
+.tarbwy-attendee-item.is-checked-in,
+.tarbwy-checkin-attendee-card.is-checked-in {
+	background: #F0FDF4;
+	border-color: #BBF7D0;
+}
+
+.tarbwy-checkin-attendee-top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.tarbwy-checkin-attendee-name {
+	font-size: 0.96rem;
+	font-weight: 800;
+	color: #0F172A;
+}
+
+.tarbwy-attendee-meta,
+.tarbwy-checkin-attendee-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	margin-top: 6px;
+	font-size: 0.8rem;
+	color: #64748B;
+}
+
+.tarbwy-type-tag,
+.tarbwy-checkin-type-badge,
+.tarbwy-checkin-rsvp-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 6px;
+	font-size: 0.72rem;
+	font-weight: 800;
+	background: #E2E8F0;
+	color: #1E293B;
+}
+
+.tarbwy-type-tag.is-vip,
+.tarbwy-checkin-type-badge.is-vip {
+	background: #FEF3C7;
+	color: #9A3412;
+	border: 1px solid #FDE68A;
+}
+
+.tarbwy-type-tag.is-companion,
+.tarbwy-checkin-type-badge.is-companion {
+	background: #E0E7FF;
+	color: #1E40AF;
+}
+
+.tarbwy-checkin-rsvp-badge.is-confirmed {
+	background: #DCFCE7;
+	color: #14532D;
+}
+
+.tarbwy-checkin-manual-btn {
+	background: #0F3D22;
+	color: #FFFFFF;
+	border: none;
+	border-radius: 10px;
+	padding: 10px 16px;
+	font-size: 0.84rem;
+	font-weight: 800;
+	cursor: pointer;
+	font-family: inherit;
+	white-space: nowrap;
+}
+
+.tarbwy-checkin-manual-btn:hover {
+	background: #14532D;
+}
+
+.tarbwy-checkin-done-pill {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	background: #DCFCE7;
+	border: 1px solid #86EFAC;
+	color: #14532D;
+	padding: 6px 12px;
+	border-radius: 10px;
+	font-size: 0.8rem;
+	font-weight: 800;
+}
+
+.tarbwy-history-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.tarbwy-history-item,
+.tarbwy-checkin-history-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-radius: 10px;
+	background: #F8FAFC;
+	border: 1px solid #E2E8F0;
+	font-size: 0.86rem;
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS (Tablet <= 992px & Mobile <= 768px)
+   ========================================================================== */
+@media (max-width: 992px) {
+	.tarbwy-hero-grid,
+	.tarbwy-contact-card {
+		grid-template-columns: 1fr;
+	}
+	.tarbwy-hero-meta,
+	.tarbwy-journey-steps {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	.tarbwy-grid-3 {
+		grid-template-columns: repeat(2, 1fr);
+	}
 }
 
 @media (max-width: 768px) {
 	.tarbwy-nav {
 		display: none;
 	}
-	.tarbwy-ticket-body-grid {
+	.tarbwy-mobile-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.tarbwy-brand-title {
+		font-size: 0.92rem;
+	}
+	.tarbwy-hero {
+		padding: 40px 0;
+	}
+	.tarbwy-hero-meta,
+	.tarbwy-journey-steps,
+	.tarbwy-grid-2,
+	.tarbwy-grid-3,
+	.tarbwy-form-grid,
+	.tarbwy-ticket-body-grid,
+	.tarbwy-scanner-actions {
 		grid-template-columns: 1fr;
 	}
-	.tarbwy-stats-ribbon {
+	.tarbwy-schedule-row {
+		grid-template-columns: 1fr;
+		gap: 8px;
+	}
+	.tarbwy-schedule-time-col {
+		border-left: none;
+		border-bottom: 1px solid var(--tarbwy-border);
+		padding-left: 0;
+		padding-bottom: 8px;
+	}
+	.tarbwy-stats-ribbon,
+	.tarbwy-checkin-kpi-grid {
 		grid-template-columns: repeat(2, 1fr);
+	}
+	.tarbwy-card,
+	.tarbwy-form-card,
+	.tarbwy-contact-card {
+		padding: 20px;
+	}
+	.tarbwy-checkin-panel {
+		display: block;
+		padding: 16px;
+	}
+	.tarbwy-attendee-item,
+	.tarbwy-checkin-attendee-card {
+		flex-direction: column;
+		align-items: stretch;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
 	}
 }
 
@@ -406,3 +1827,4 @@ input[type="search"] {
 		box-shadow: none;
 	}
 }
+

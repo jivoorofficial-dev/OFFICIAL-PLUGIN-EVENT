@@ -3,7 +3,7 @@
  * Plugin Name:       Tarbwy Event Manager
  * Plugin URI:        https://tarbwy.org
  * Description:       إضافة WordPress مستقلة ومتكاملة لإدارة حفل إطلاق «تربوي — الاتحاد العربي للقيادة التربوية»، تشمل صفحة الهبوط، التسجيل العام، دعوات VIP، بطاقات QR الفردية، نظام Check-in المتزامن، والرسائل والتقارير.
- * Version:           1.0.0
+ * Version:           2.2.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            فريق الهندسة — تربوي
@@ -19,8 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TARBWY_EM_VERSION', '1.0.0' );
-define( 'TARBWY_EM_DB_VERSION', '1.0.0' );
+define( 'TARBWY_EM_VERSION', '2.2.0' );
+define( 'TARBWY_EM_DB_VERSION', '2.2.0' );
 define( 'TARBWY_EM_FILE', __FILE__ );
 define( 'TARBWY_EM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TARBWY_EM_URL', plugin_dir_url( __FILE__ ) );
@@ -81,15 +81,23 @@ function tarbwy_em_autoload() {
 }
 
 if ( tarbwy_em_check_requirements() ) {
-	tarbwy_em_autoload();
+	try {
+		tarbwy_em_autoload();
 
-	register_activation_hook( __FILE__, array( __NAMESPACE__ . '\\Installer', 'activate' ) );
-	register_deactivation_hook( __FILE__, array( __NAMESPACE__ . '\\Installer', 'deactivate' ) );
+		register_activation_hook( __FILE__, array( __NAMESPACE__ . '\\Installer', 'activate' ) );
+		register_deactivation_hook( __FILE__, array( __NAMESPACE__ . '\\Installer', 'deactivate' ) );
 
-	add_action(
-		'plugins_loaded',
-		function () {
-			Plugin::get_instance()->init();
-		}
-	);
+		add_action(
+			'plugins_loaded',
+			function () {
+				try {
+					Plugin::get_instance()->init();
+				} catch ( \Throwable $e ) {
+					error_log( 'Tarbwy Event Manager initialization error: ' . $e->getMessage() );
+				}
+			}
+		);
+	} catch ( \Throwable $e ) {
+		error_log( 'Tarbwy Event Manager loader error: ' . $e->getMessage() );
+	}
 }

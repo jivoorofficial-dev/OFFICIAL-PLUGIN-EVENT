@@ -1,68 +1,276 @@
 /**
- * Tarbwy Event Manager — WordPress Admin RTL Stylesheet (tarbwy-admin.css)
+ * Tarbwy Event Manager — WordPress Admin Scoped RTL/LTR Stylesheet (tarbwy-admin.css)
+ *
+ * Strictly isolates plugin RTL layout inside .tarbwy-admin-wrap so it never flips
+ * or distorts the global WordPress Admin sidebar (#adminmenumain / #wpcontent)
+ * when WordPress Admin is running in English (LTR) or Arabic (RTL).
  */
+
+/* Guard global WordPress Admin layout when WP is in LTR mode */
+body.wp-admin:not(.rtl) {
+	direction: ltr !important;
+}
+
+body.wp-admin:not(.rtl) #wpcontent,
+body.wp-admin:not(.rtl) #wpfooter {
+	margin-right: 0 !important;
+}
+
+.tarbwy-admin-wrap,
+.tarbwy-admin-wrap * {
+	box-sizing: border-box;
+}
 
 .tarbwy-admin-wrap {
 	direction: rtl;
 	text-align: right;
-	font-family: Tahoma, Arial, sans-serif;
-	max-width: 1280px;
+	font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+	width: 100%;
+	max-width: 100%;
+	margin: 16px 0 32px 0;
+	padding-left: 16px;
+	padding-right: 16px;
+	overflow-x: hidden;
+	color: #1C1917;
 }
 
 .tarbwy-admin-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	flex-wrap: wrap;
+	gap: 16px;
 	background: #FFFFFF;
 	border: 1px solid #DCD7CA;
+	border-right: 5px solid #14532D;
+	border-radius: 8px;
 	padding: 20px 24px;
-	margin: 16px 0;
+	margin: 0 0 16px 0;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .tarbwy-admin-header h1 {
-	margin: 0 0 6px;
+	margin: 0 0 6px 0;
 	font-size: 1.4rem;
+	line-height: 1.35;
 	color: #14532D;
+	font-weight: 700;
 }
 
 .tarbwy-admin-subtitle {
 	margin: 0;
 	color: #57534E;
+	font-size: 0.92rem;
+}
+
+.tarbwy-admin-quicklinks {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.tarbwy-nav-tabs.nav-tab-wrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	border-bottom: 1px solid #DCD7CA;
+	padding-top: 0;
+	margin-bottom: 18px;
+	direction: rtl;
+}
+
+.tarbwy-nav-tabs .nav-tab {
+	float: none !important;
+	margin: 0 !important;
+	border-radius: 6px 6px 0 0;
+	font-weight: 600;
+	font-size: 13px;
+	padding: 8px 14px;
+}
+
+.tarbwy-nav-tabs .nav-tab-active {
+	background: #FFFFFF;
+	color: #14532D;
+	border-top: 3px solid #14532D;
 }
 
 .tarbwy-kpi-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-	gap: 16px;
-	margin: 20px 0;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 14px;
+	margin: 18px 0;
 }
 
 .tarbwy-kpi-box {
 	background: #FFFFFF;
 	border: 1px solid #DCD7CA;
-	padding: 18px;
+	border-radius: 8px;
+	padding: 16px 18px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .tarbwy-kpi-box span {
 	display: block;
 	font-size: 0.85rem;
 	color: #57534E;
+	font-weight: 600;
 }
 
 .tarbwy-kpi-box strong {
 	display: block;
-	font-size: 1.65rem;
+	font-size: 1.6rem;
 	margin: 6px 0;
+	color: #1C1917;
 	font-variant-numeric: tabular-nums;
 }
 
 .tarbwy-kpi-box small {
 	color: #78716C;
+	font-size: 0.78rem;
 }
 
 .tarbwy-admin-panel {
 	background: #FFFFFF;
 	border: 1px solid #DCD7CA;
-	padding: 24px;
+	border-radius: 8px;
+	padding: 22px 24px;
 	margin-top: 20px;
+	width: 100%;
+	max-width: 100%;
+	overflow-x: auto;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.tarbwy-admin-panel h2 {
+	margin-top: 0;
+	color: #14532D;
+	font-size: 1.2rem;
+}
+
+.tarbwy-grid-2col {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+	gap: 20px;
+	margin-bottom: 20px;
+	width: 100%;
+}
+
+/* Status Badges */
+.tarbwy-status-badge {
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.3;
+	white-space: nowrap;
+}
+
+.tarbwy-status-approved,
+.tarbwy-status-confirmed,
+.tarbwy-status-active,
+.tarbwy-status-sent {
+	background: #DCFCE7;
+	color: #14532D;
+	border: 1px solid #86EFAC;
+}
+
+.tarbwy-status-pending,
+.tarbwy-status-pending_response,
+.tarbwy-status-queued {
+	background: #FEF3C7;
+	color: #92400E;
+	border: 1px solid #FDE68A;
+}
+
+.tarbwy-status-waitlist {
+	background: #DBEAFE;
+	color: #1E3A8A;
+	border: 1px solid #93C5FD;
+}
+
+.tarbwy-status-declined,
+.tarbwy-status-rejected,
+.tarbwy-status-revoked,
+.tarbwy-status-failed {
+	background: #FEE2E2;
+	color: #991B1B;
+	border: 1px solid #FCA5A5;
+}
+
+/* Scoped Email Preview Iframe */
+.tarbwy-email-preview-stage {
+	background: #E2E8F0;
+	padding: 20px;
+	border-radius: 8px;
+	text-align: center;
+	width: 100%;
+	overflow-x: auto;
+}
+
+.tarbwy-email-iframe-container {
+	max-width: 640px;
+	width: 100%;
+	margin: 0 auto;
+	transition: max-width 0.25s ease;
+	background: #FFFFFF;
+	border-radius: 10px;
+	overflow: hidden;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+	border: 1px solid #CBD5E1;
+}
+
+.tarbwy-email-iframe-container iframe {
+	width: 100%;
+	height: 680px;
+	border: 0;
+	display: block;
+	background: #F3EFE6;
+}
+
+/* Tables inside Admin Panels */
+.tarbwy-admin-panel table.widefat {
+	border-radius: 6px;
+	overflow: hidden;
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.tarbwy-admin-panel table.widefat th,
+.tarbwy-admin-panel table.widefat td {
+	text-align: right;
+	vertical-align: middle;
+	padding: 10px 12px;
+}
+
+.tarbwy-action-bar {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+/* Responsive Breakpoints (Tablet & Mobile) */
+@media screen and (max-width: 1024px) {
+	.tarbwy-grid-2col {
+		grid-template-columns: 1fr;
+	}
+	.tarbwy-admin-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.tarbwy-admin-wrap {
+		padding-left: 8px;
+		padding-right: 8px;
+	}
+	.tarbwy-admin-panel {
+		padding: 14px;
+	}
+	.tarbwy-kpi-grid {
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	}
 }
